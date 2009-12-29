@@ -1,0 +1,30 @@
+#!/usr/bin/env python
+from jamaendo.api import DB, Queries
+import sys
+
+def pprint(x):
+    import json
+    print json.dumps(x, sort_keys=True, indent=4)
+
+def main():
+
+    query = sys.argv[1]
+
+    if query == 'today':
+        result = Queries.albums_today.emit()
+        pprint(result)
+    elif query == 'artist':
+        q = sys.argv[2]
+        db = DB()
+        db.connect()
+        for artist in db.search_artists(q):
+            pprint(artist)
+    elif query == 'album':
+        q = sys.argv[2]
+        db = DB()
+        db.connect()
+        for album in db.search_albums(q):
+            pprint(album)
+
+if __name__=="__main__":
+    main()
