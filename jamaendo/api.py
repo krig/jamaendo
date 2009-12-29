@@ -79,6 +79,15 @@ class LocalDB(object):
             for child in element:
                 if child.tag in ['name', 'id', 'image']:
                     ret[child.tag] = child.text
+                if child.tag == 'Albums':
+                    albums = []
+                    for album in child:
+                        albie = {}
+                        for albumitem in album:
+                            if albumitem.tag in ['name', 'id']:
+                                albie[albumitem.tag] = albumitem.text
+                        albums.append(albie)
+                    ret['albums'] = albums
             return ret
 
     def make_album_obj(self, element):
@@ -86,6 +95,13 @@ class LocalDB(object):
             return element.text
         else:
             ret = {}
+            artist = element.getparent().getparent()
+            if artist is not None:
+                for child in artist:
+                    if child.tag == 'name':
+                        ret['artist'] = child.text
+                    elif child.tag == 'id':
+                        ret['artist_id'] = child.text
             for child in element:
                 if child.tag in ['name', 'id', 'image']:
                     if child.text:
@@ -136,7 +152,7 @@ class LocalDB(object):
     def albumid_walker(self, albumids):
         for event, element in etree.iterparse(self.fil, tag="album"):
             _id = element.xpath('./id')[0].text
-            if _id and int(_id) in albumids:
+            if _id and (int(_id) in albumids):
                 yield self.make_album_obj(element)
             element.clear()
             while element.getprevious() is not None:
@@ -151,11 +167,11 @@ class LocalDB(object):
         substr = substr.lower()
         return (album for album in self.album_walker(substr))
 
-    def get_album(self, artistid):
-        return (artist for artist in self.artistid_walker(artistid))
+    def get_artists(self, artistids):
+        return (artist for artist in self.artistid_walker(artistids))
 
-    def get_album(self, albumid):
-        return (album for album in self.albumid_walker(albumid))
+    def get_albums(self, albumids):
+        return (album for album in self.albumid_walker(albumids))
 
 _GET2 = '''http://api.jamendo.com/get2/'''
 

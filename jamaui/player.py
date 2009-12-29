@@ -48,6 +48,8 @@ class GStreamer(object):
             self.player = None
             return False
 
+        log.debug("Setting up for %s : %s", filetype, uri)
+
         # On maemo use software decoding to workaround some bugs their gst:
         # 1. Weird volume bugs in playbin when playing ogg or wma files
         # 2. When seeking the DSPs sometimes lie about the real position info
@@ -64,14 +66,14 @@ class GStreamer(object):
 
         self._set_uri_to_be_played(uri)
 
-        bus = self._player.get_bus()
+        bus = self.player.get_bus()
         bus.add_signal_watch()
         bus.connect('message', self._on_message)
         return True
 
     def get_state(self):
         if self.player:
-            state = self._player.get_state()[1]
+            state = self.player.get_state()[1]
             return self.STATES.get(state, 'none')
         return 'none'
 
@@ -80,6 +82,7 @@ class GStreamer(object):
 
     def play(self):
         if self.player:
+            log.debug("playing")
             self.player.set_state(gst.STATE_PLAYING)
 
     def pause(self):
@@ -191,31 +194,54 @@ class GStreamer(object):
         self.eos_callback = cb
 
 class Playlist(object):
-    def __init__(self):
-        self.items = []
+    def __init__(self, items = []):
+        self.items = items
+        self.current = -1
 
     def add(self, item):
         self.items.append(item)
+
+    def next(self):
+        if self.has_next():
+            self.current = self.current + 1
+            return self.items[self.current]
+        return None
+
+    def has_next(self):
+        return self.current < (len(self.items)-1)
 
 class Player(Playlist):
     def __init__(self):
         self.gstreamer = GStreamer()
         self.gstreamer.set_eos_callback(self._on_eos)
+        self.playlist = None
 
-    def play(self, item=None):
-        pass
+    def play(self, playlist = None):
+        if playlist:
+            self.playlist = playlist
+        if self.playlist is not None:
+            if self.playlist.has_next():
+                self.gstreamer.setup('mp3', self.playlist.next())
+                self.gstreamer.play()
 
     def pause(self):
-        pass
+        self.gstreamer.pause()
 
     def stop(self):
-        pass
+        self.gstreamer.stop()
+
+    def playing(self):
+        return self.gstreamer.playing()
 
     def next(self):
-        pass
+        if self.playlist.has_next():
+            self.gstreamer.setup('mp3', self.playlist.next())
+            self.gstreamer.play()
+        else:
+            self.stop()
 
     def prev(self):
         pass
 
     def _on_eos(self):
-        pass
+        self.next()

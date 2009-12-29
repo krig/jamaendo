@@ -7,8 +7,11 @@ if os.path.isdir(local_module_dir):
     sys.path.append(local_module_dir)
 
 def main():
-    from jamaui.ui import JamaUI
-    player = JamaUI()
+    #from jamaui.ui import JamaUI
+    #player = JamaUI()
+    from jamaui.console import Console
+    player = Console()
+
     player.run()
 
 if __name__=="__main__":
