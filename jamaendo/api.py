@@ -61,7 +61,7 @@ class Obj(object):
         return "{%s}" % (", ".join("%s=%s"%(k.encode('utf-8'), printable(v)) \
                              for k,v in self.__dict__.iteritems() if not k.startswith('_')))
 
-class DB(object):
+class LocalDB(object):
     def __init__(self):
         self.fil = None
 
@@ -161,23 +161,50 @@ _GET2 = '''http://api.jamendo.com/get2/'''
 
 class Query(object):
     last_query = time.time()
+    caching = True
+    cache_time = 60*60*24
+    rate_limit = 1.0 # max queries per second
 
-    def __init__(self, order, select=['id', 'name', 'image', 'artist_name'], request='album', track=None, n=8):
+    def __init__(self, order,
+                 select=['id', 'name', 'image', 'artist_name'],
+                 request='album',
+                 track=['track_album', 'album_artist'],
+                 count=5):
         if request == 'track':
-            self.url = "%s%s/%s/json/%s?n=%s&order=%s" % (_GET2, '+'.join(select), request, '+'.join(track), n, order)
+            self.url = "%s%s/%s/json/%s?n=%s&order=%s" % (_GET2, '+'.join(select), request, '+'.join(track), count, order)
         else:
-            self.url = "%s%s/%s/json/?n=%s&order=%s" % (_GET2, '+'.join(select), request, n, order)
+            self.url = "%s%s/%s/json/?n=%s&order=%s" % (_GET2, '+'.join(select), request, count, order)
 
-    def emit(self):
-        """ratelimited query"""
+
+    def _ratelimit(self):
         now = time.time()
-        if now - self.last_query < 1.0:
-            time.sleep(1.0 - (now - self.last_query))
+        if now - self.last_query < self.rate_limit:
+            time.sleep(self.rate_limit - (now - self.last_query))
         self.last_query = now
+
+    def __call__(self):
+        """ratelimited query"""
+        self._ratelimit()
         f = urllib.urlopen(self.url)
         ret = json.load(f)
         f.close()
         return ret
+
+    @staticmethod
+    def album_cover(albumid, size=200):
+        to = '~/.cache/jamaendo/cover-%d-%d.jpg'%(albumid, size)
+        if not os.path.isfile(to):
+            url = _GET2+'image/album/redirect/?id=%d&imagesize=%d'%(albumid, size)
+            urllib.urlretrieve(url, to)
+        return to
+
+    @staticmethod
+    def track_ogg(trackid):
+       return _GET2+ 'stream/track/redirect/?id=%d&streamencoding=ogg2'%(trackid)
+
+    @staticmethod
+    def track_mp3(trackid):
+       return _GET2+ 'stream/track/redirect/?id=%d&streamencoding=mp31'%(trackid)
 
 class Queries(object):
     albums_this_week = Query(order='ratingweek_desc')
@@ -185,20 +212,9 @@ class Queries(object):
     albums_this_month = Query(order='ratingmonth_desc')
     albums_today = Query(order='ratingday_desc')
     playlists_all_time = Query(select=['id','name', 'user_idstr'], request='playlist', order='ratingtotal_desc')
-    tracks_this_month = Query(select=['id', 'name', 'url', 'stream', 'album_name', 'album_url', 'album_id', 'artist_id', 'artist_name'],
+    tracks_this_month = Query(select=['id', 'name',
+                                      'stream',
+                                      'album_name', 'artist_name',
+                                      'album_id', 'artist_id'],
                               request='track',
-                              track=['track_album', 'album_artist'],
                               order='ratingmonth_desc')
-
-def get_cover(albumid, size=200):
-    to = '~/.cache/jamaendo/cover-%d-%d.jpg'%(albumid, size)
-    if not os.path.isfile(to):
-        url = _GET2+'image/album/redirect/?id=%d&imagesize=%d'%(albumid, size)
-        urllib.urlretrieve(url, to)
-    return to
-
-def get_ogg_url(trackid):
-   return _GET2+ 'stream/track/redirect/?id=%d&streamencoding=ogg2'%(trackid)
-
-def get_mp3_url(trackid):
-   return _GET2+ 'stream/track/redirect/?id=%d&streamencoding=mp31'%(trackid)
