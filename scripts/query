@@ -1,6 +1,13 @@
 #!/usr/bin/env python
+
+# debugging hack - add . to path
+import os, sys
+local_module_dir = os.path.join(os.path.dirname(sys.argv[0]), '..')
+if os.path.isdir(local_module_dir):
+    sys.path.append(local_module_dir)
+
 from jamaendo.api import LocalDB, Queries, refresh_dump
-import sys, time
+import time
 
 class Refresher(object):
     def __init__(self):
