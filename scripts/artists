@@ -9,8 +9,8 @@ def main():
     print "Connected."
     q = sys.argv[1]
     print "Querying db for %s..." % (q)
-    ids = db.search_artists(q)
-    print ", ".join(ids)
+    artists = db.search_artists(q)
+    print artists
 
 if __name__=="__main__":
     main()

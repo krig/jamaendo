@@ -77,7 +77,8 @@ class DB(object):
         else:
             ret = Obj()
             for child in element:
-                setattr(ret, child.tag, self.make_obj(child))
+                if child.tag in ['name', 'id']:
+                    setattr(ret, child.tag, child.text)
             return ret
 
     def artist_walker(self):
@@ -90,8 +91,4 @@ class DB(object):
 
     def search_artists(self, substr):
         substr = substr.lower()
-        #return [dir(artist) for artist in self.artist_walker() if artist.name.find(substr) > -1]
-        artist = self.artist_walker().next()
-        print artist
-        print artist.name
-        return [artist.id]
+        return [artist for artist in self.artist_walker() if artist.name.lower().find(substr) > -1]
