@@ -29,8 +29,8 @@ class Refresher(object):
 
 
 def pprint(x):
-    import json
-    print json.dumps(x, sort_keys=True, indent=4)
+    import simplejson
+    print simplejson.dumps(x, sort_keys=True, indent=4)
 
 def main():
     Refresher().run()

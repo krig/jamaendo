@@ -1,4 +1,4 @@
-import urllib, threading, os, gzip, time, json, re
+import urllib, threading, os, gzip, time, simplejson, re
 _DUMP_URL = '''http://img.jamendo.com/data/dbdump_artistalbumtrack.xml.gz'''
 _DUMP = os.path.expanduser('''~/.cache/jamaendo/dbdump.xml.gz''')
 
@@ -71,53 +71,58 @@ class LocalDB(object):
     def close(self):
         self.fil.close()
 
+    def make_album_brief(self, element):
+        ret = {}
+        for info in element:
+            if info.tag == 'id':
+                ret['id'] = int(info.text)
+            elif info.tag == 'name':
+                ret['name'] = info.text
+        return ret
+
     def make_artist_obj(self, element):
-        if element.text is not None and element.text != "":
-            return element.text
-        else:
-            ret = {}
-            for child in element:
-                if child.tag in ['name', 'id', 'image']:
-                    ret[child.tag] = child.text
-                if child.tag == 'Albums':
-                    albums = []
-                    for album in child:
-                        albie = {}
-                        for albumitem in album:
-                            if albumitem.tag in ['name', 'id']:
-                                albie[albumitem.tag] = albumitem.text
-                        albums.append(albie)
-                    ret['albums'] = albums
-            return ret
+        ret = {}
+        for child in element:
+            if child.tag == 'id':
+                ret['id'] = int(child.text)
+            elif child.tag in ('name', 'image'):
+                ret[child.tag] = child.text
+            elif child.tag == 'Albums':
+                ret['albums'] = [self.make_album_brief(a) for a in child]
+        return ret
+
+    def make_track_obj(self, element):
+        ret = {}
+        for info in element:
+            if info.tag == 'id':
+                _id = int(info.text)
+                ret['id'] = _id
+                ret['mp3'] = Query.track_mp3(_id)
+                ret['ogg'] = Query.track_ogg(_id)
+            elif info.tag in ('name', 'numalbum'):
+                ret[info.tag] = info.text
+        return ret
 
     def make_album_obj(self, element):
-        if element.text is not None and element.text != "":
-            return element.text
-        else:
-            ret = {}
-            artist = element.getparent().getparent()
-            if artist is not None:
-                for child in artist:
-                    if child.tag == 'name':
-                        ret['artist'] = child.text
-                    elif child.tag == 'id':
-                        ret['artist_id'] = child.text
-            for child in element:
-                if child.tag in ['name', 'id', 'image']:
-                    if child.text:
-                        ret[child.tag] = child.text
-                    else:
-                        ret[child.tag] = ""
-                if child.tag == 'Tracks':
-                    tracks = []
-                    for track in child:
-                        trackd = {}
-                        for trackinfo in track:
-                            if trackinfo.tag in ['name', 'id', 'numalbum']:
-                                trackd[trackinfo.tag] = trackinfo.text
-                        tracks.append(trackd)
-                    ret['tracks'] = tracks
-            return ret
+        ret = {}
+        artist = element.getparent().getparent()
+        if artist is not None:
+            for child in artist:
+                if child.tag == 'name':
+                    ret['artist'] = child.text
+                elif child.tag == 'id':
+                    ret['artist_id'] = int(child.text)
+        for child in element:
+            if child.tag == 'id':
+                ret['id'] = int(child.text)
+            elif child.tag in ('name', 'image'):
+                if child.text:
+                    ret[child.tag] = child.text
+                else:
+                    ret[child.tag] = ""
+            elif child.tag == 'Tracks':
+                ret['tracks'] = [self.make_track_obj(t) for t in child]
+        return ret
 
     def artist_walker(self, name_match):
         for event, element in etree.iterparse(self.fil, tag="artist"):
@@ -202,7 +207,7 @@ class Query(object):
         """ratelimited query"""
         self._ratelimit()
         f = urllib.urlopen(self.url)
-        ret = json.load(f)
+        ret = simplejson.load(f)
         f.close()
         return ret
 

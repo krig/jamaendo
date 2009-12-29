@@ -69,6 +69,8 @@ class GStreamer(object):
         bus = self.player.get_bus()
         bus.add_signal_watch()
         bus.connect('message', self._on_message)
+
+        self._set_volume_level( 1 )
         return True
 
     def get_state(self):
@@ -194,12 +196,29 @@ class GStreamer(object):
         self.eos_callback = cb
 
 class Playlist(object):
+    class Entry(object):
+        def __init__(self, data):
+            if isinstance(data, dict):
+                self.id = data['id']
+                self.name = data['name']
+                self.numalbum = int(data['numalbum'])
+                self.url = data['mp3']
+                self.type = 'mp3'
+            elif isinstance(data, basestring): # assume URI
+                self.id = 0
+                self.name = ''
+                self.numalbum = 0
+                self.url = data
+                self.type = 'mp3'
+        def __str__(self):
+            return "{%s}" % (", ".join([str(self.name), str(self.numalbum), str(self.url)]))
+
     def __init__(self, items = []):
-        self.items = items
+        self.items = [Playlist.Entry(item) for item in items]
         self.current = -1
 
     def add(self, item):
-        self.items.append(item)
+        self.items.append(Playlist.Entry(item))
 
     def next(self):
         if self.has_next():
@@ -221,7 +240,9 @@ class Player(Playlist):
             self.playlist = playlist
         if self.playlist is not None:
             if self.playlist.has_next():
-                self.gstreamer.setup('mp3', self.playlist.next())
+                entry = self.playlist.next()
+                log.debug("playing %s", entry)
+                self.gstreamer.setup(entry.type, entry.url)
                 self.gstreamer.play()
 
     def pause(self):
@@ -235,8 +256,8 @@ class Player(Playlist):
 
     def next(self):
         if self.playlist.has_next():
-            self.gstreamer.setup('mp3', self.playlist.next())
-            self.gstreamer.play()
+            self.stop()
+            self.play()
         else:
             self.stop()
 
@@ -244,4 +265,5 @@ class Player(Playlist):
         pass
 
     def _on_eos(self):
+        log.debug("EOS!")
         self.next()

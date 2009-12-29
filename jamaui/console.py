@@ -9,6 +9,9 @@ if os.path.isdir(local_module_dir):
 from jamaendo.api import LocalDB, Query, Queries, refresh_dump
 from jamaui.player import Player, Playlist
 import time
+import gobject
+
+gobject.threads_init()
 
 class Refresher(object):
     def __init__(self):
@@ -29,8 +32,8 @@ class Refresher(object):
 
 
 def pprint(x):
-    import json
-    print json.dumps(x, sort_keys=True, indent=4)
+    import simplejson
+    print simplejson.dumps(x, sort_keys=True, indent=4)
 
 class Console(object):
     def run(self):
@@ -74,10 +77,12 @@ class Console(object):
     def query_play_track(self):
         trackid = int(sys.argv[2])
         uri = Query.track_mp3(trackid)
-        items = [uri]
-        playlist = Playlist(items)
+        playlist = Playlist([uri])
         player = Player()
         player.play(playlist)
+
+        while player.playing():
+            time.sleep(1)
 
     def query_play_album(self):
         albumid = int(sys.argv[2])
@@ -90,14 +95,16 @@ class Console(object):
         if not album:
             return
         print "%s - %s" % (album['artist'], album['name'])
-        items = [Query.track_mp3(int(track['id'])) for track in album['tracks']]
 
-        playlist = Playlist(items)
+        playlist = Playlist(album['tracks'])
         player = Player()
         player.play(playlist)
 
         while player.playing():
-            time.sleep(1)
+            try:
+                time.sleep(1)
+            except KeyboardInterrupt:
+                player.next()
 
 if __name__=="__main__":
     main()
