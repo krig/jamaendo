@@ -10,6 +10,7 @@ import util
 import logging
 import gobject
 
+# we don't use the local DB...
 from jamaendo.api import LocalDB, Query, Queries, refresh_dump
 from jamaui.player import Player, Playlist
 
@@ -192,10 +193,10 @@ class SearchWindow(hildon.StackableWindow):
     def on_search(self, w):
         txt = self.entry.get_text()
         print "Search for: %s" % (txt)
-        db = LocalDB()
-        db.connect()
-        for album in db.search_albums(txt):
-            title = "%s - %s" % (album['artist'], album['name'])
+        #db = LocalDB()
+        #db.connect()
+        for album in Queries.search_albums(query=txt):
+            title = "%s - %s" % (album['artist_name'], album['name'])
             self.idmap[title] = album
             print "Found %s" % (album)
             self.results.append_text(title)
@@ -204,17 +205,10 @@ class SearchWindow(hildon.StackableWindow):
         current_selection = results.get_current_text()
 
         album = self.idmap[current_selection]
-        selected = [album['id']]
+        selected = [int(album['id'])]
         print "Selected: %s" % (selected)
-        album = None
-        db = LocalDB()
-        db.connect()
-        for a in db.get_albums(selected):
-            album = a
-            break
-
-        if album:
-            tracks = album['tracks']
+        tracks = Queries.album_tracks(selected)
+        if tracks:
             print "Playing: %s" % (tracks)
             self.pwnd = PlayerWindow(tracks)
             self.pwnd.show_all()
@@ -268,10 +262,11 @@ class Jamaui(object):
         player.connect("clicked", self.on_player)
         self.menu.append(player)
 
-        refresh = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
-        refresh.set_label("Refresh")
-        refresh.connect("clicked", self.on_refresh)
-        self.menu.append(refresh)
+        # Don't use localdb ATM
+        #refresh = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        #refresh.set_label("Refresh")
+        #refresh.connect("clicked", self.on_refresh)
+        #self.menu.append(refresh)
 
         menu_about = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
         menu_about.set_label("About")

@@ -117,7 +117,7 @@ class LocalDB(object):
         if artist is not None:
             for child in artist:
                 if child.tag == 'name':
-                    ret['artist'] = child.text
+                    ret['artist_name'] = child.text
                 elif child.tag == 'id':
                     ret['artist_id'] = int(child.text)
         for child in element:
@@ -194,16 +194,34 @@ class Query(object):
     cache_time = 60*60*24
     rate_limit = 1.0 # max queries per second
 
-    def __init__(self, order,
-                 select=['id', 'name', 'image', 'artist_name'],
+    def __init__(self,
+                 select=['id', 'name', 'image', 'artist_name', 'artist_id'],
                  request='album',
-                 track=['track_album', 'album_artist'],
-                 count=5):
+                 track=['track_album', 'album_artist']):
         if request == 'track':
-            self.url = "%s%s/%s/json/%s?n=%s&order=%s" % (_GET2, '+'.join(select), request, '+'.join(track), count, order)
+            self.url = "%s%s/%s/json/%s" % (_GET2, '+'.join(select), request, '+'.join(track))
         else:
-            self.url = "%s%s/%s/json/?n=%s&order=%s" % (_GET2, '+'.join(select), request, count, order)
+            self.url = "%s%s/%s/json/" % (_GET2, '+'.join(select), request)
 
+    def __call__(self, order=None, count=5, query=None, albumids=None):
+        return self.emit(order=order, count=count, query=query, albumids=albumids)
+
+    def emit(self, order=None, count=5, query=None, albumids=None):
+        """ratelimited query"""
+        self._ratelimit()
+        paramdict = {'n':count}
+        if order is not None:
+            paramdict['order'] = order
+        if query is not None:
+            paramdict['searchquery'] = query
+        if albumids is not None:
+            paramdict['album_id'] = " ".join(str(_id) for _id in albumids)
+        params = urllib.urlencode(paramdict)
+        url = self.url + "?%s" % (params)
+        f = urllib.urlopen(url)
+        ret = simplejson.load(f)
+        f.close()
+        return ret
 
     def _ratelimit(self):
         now = time.time()
@@ -211,13 +229,6 @@ class Query(object):
             time.sleep(self.rate_limit - (now - self.last_query))
         self.last_query = now
 
-    def __call__(self):
-        """ratelimited query"""
-        self._ratelimit()
-        f = urllib.urlopen(self.url)
-        ret = simplejson.load(f)
-        f.close()
-        return ret
 
     @staticmethod
     def album_cover(albumid, size=200):
@@ -236,14 +247,49 @@ class Query(object):
        return _GET2+ 'stream/track/redirect/?id=%d&streamencoding=mp31'%(trackid)
 
 class Queries(object):
-    albums_this_week = Query(order='ratingweek_desc')
-    albums_all_time = Query(order='ratingtotal_desc')
-    albums_this_month = Query(order='ratingmonth_desc')
-    albums_today = Query(order='ratingday_desc')
-    playlists_all_time = Query(select=['id','name', 'user_idstr'], request='playlist', order='ratingtotal_desc')
-    tracks_this_month = Query(select=['id', 'name',
-                                      'stream',
-                                      'album_name', 'artist_name',
-                                      'album_id', 'artist_id'],
-                              request='track',
-                              order='ratingmonth_desc')
+    @staticmethod
+    def albums_this_week():
+        return Query().emit(order='ratingweek_desc')
+    @staticmethod
+    def albums_all_time():
+        return Query().emit(order='ratingtotal_desc')
+    @staticmethod
+    def albums_this_month():
+        return Query().emit(order='ratingmonth_desc')
+    @staticmethod
+    def albums_today():
+        return Query().emit(order='ratingday_desc')
+    @staticmethod
+    def playlists_all_time():
+        q = Query(select=['id','name', 'user_idstr'], request='playlist')
+        return q.emit(order='ratingtotal_desc')
+
+    @staticmethod
+    def tracks_this_month():
+        q = Query(select=['id', 'name',
+                          'stream',
+                          'album_name', 'artist_name',
+                          'album_id', 'artist_id'],
+                  request='track')
+        return q.emit(order='ratingmonth_desc')
+
+    @staticmethod
+    def search_albums(query):
+        q = Query()
+        return q.emit(order='searchweight_desc', query=query)
+
+    @staticmethod
+    def search_artists(query):
+        q = Query(request='artist', select=['id', 'name', 'image'])
+        return q.emit(order='searchweight_desc', query=query)
+
+    @staticmethod
+    def album_tracks(albumids, select=['id', 'name', 'numalbum']):
+        #http://api.jamendo.com/get2/id+name/track/jsonpretty/?album_id=33+46
+        q = Query(select=select,
+                  request='track')
+        ret = q.emit(albumids=albumids, count=100)
+        for track in ret:
+            track['mp3'] = Query.track_mp3(int(track['id']))
+            track['ogg'] = Query.track_ogg(int(track['id']))
+        return ret

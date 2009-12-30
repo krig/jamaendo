@@ -24,6 +24,7 @@ pygst.require('0.10')
 import gst
 import util
 import dbus
+import dbus.service
 
 log = logging.getLogger(__name__)
 
