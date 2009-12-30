@@ -23,17 +23,37 @@ import pygst
 pygst.require('0.10')
 import gst
 import util
+import dbus
 
 log = logging.getLogger(__name__)
 
+class _Player(object):
+    """Defines the internal player interface"""
+    def __init__(self):
+        pass
+    def play_url(self, filetype, uri):
+        raise NotImplemented
+    def playing(self):
+        raise NotImplemented
+    def play_pause_toggle(self):
+        self.pause() if self.playing() else self.play()
+    def play(self):
+        raise NotImplemented
+    def pause(self):
+        raise NotImplemented
+    def stop(self):
+        raise NotImplemented
+    def set_eos_callback(self, cb):
+        raise NotImplemented
 
-class GStreamer(object):
+class GStreamer(_Player):
     """Wraps GStreamer"""
     STATES = { gst.STATE_NULL    : 'stopped',
                gst.STATE_PAUSED  : 'paused',
                gst.STATE_PLAYING : 'playing' }
 
     def __init__(self):
+        _Player.__init__(self)
         self.time_format = gst.Format(gst.FORMAT_TIME)
         self.player = None
         self.filesrc = None
@@ -43,7 +63,7 @@ class GStreamer(object):
         self.volume_property = None
         self.eos_callback = lambda: self.stop()
 
-    def setup(self, filetype, uri):
+    def play_url(self, filetype, uri):
         if None in (filetype, uri):
             self.player = None
             return False
@@ -54,7 +74,7 @@ class GStreamer(object):
         # 1. Weird volume bugs in playbin when playing ogg or wma files
         # 2. When seeking the DSPs sometimes lie about the real position info
         if util.platform == 'maemo':
-            if True or not self._maemo_setup_hardware_player(filetype):
+            if not self._maemo_setup_hardware_player(filetype):
                 self._maemo_setup_software_player()
                 log.debug( 'Using software decoding (maemo)' )
             else:
@@ -71,6 +91,8 @@ class GStreamer(object):
         bus.connect('message', self._on_message)
 
         self._set_volume_level( 1 )
+
+        self.play()
         return True
 
     def get_state(self):
@@ -90,9 +112,6 @@ class GStreamer(object):
     def pause(self):
         if self.player:
             self.player.set_state(gst.STATE_PAUSED)
-
-    def play_pause_toggle(self):
-        self.pause() if self.playing() else self.play()
 
     def stop(self):
         if self.player:
@@ -195,6 +214,91 @@ class GStreamer(object):
     def set_eos_callback(self, cb):
         self.eos_callback = cb
 
+if util.platform == 'maemo':
+    class OssoPlayer(_Player):
+        """
+        A player which uses osso-media-player for playback (Maemo-specific)
+        """
+
+        SERVICE_NAME         = "com.nokia.osso_media_server"
+        OBJECT_PATH          = "/com/nokia/osso_media_server"
+        AUDIO_INTERFACE_NAME = "com.nokia.osso_media_server.music"
+
+        def __init__(self):
+            self._on_eos = lambda: self.stop()
+            self._state = 'none'
+            self._audio = self._init_dbus()
+            self._init_signals()
+
+        def play_url(self, filetype, uri):
+            self._audio.play_media(uri)
+
+        def playing(self):
+            return self._state == 'playing'
+
+        def play_pause_toggle(self):
+            self.pause() if self.playing() else self.play()
+
+        def play(self):
+            self._audio.play()
+
+        def pause(self):
+            if self.playing():
+                self._audio.pause()
+
+        def stop(self):
+            self._audio.stop()
+
+        def set_eos_callback(self, cb):
+            self._on_eos = cb
+
+
+        def _init_dbus(self):
+            session_bus = dbus.SessionBus()
+            oms_object = session_bus.get_object(self.SERVICE_NAME,
+                                                self.OBJECT_PATH,
+                                                introspect = False,
+                                                follow_name_owner_changes = True)
+            return dbus.Interface(oms_object, self.AUDIO_INTERFACE_NAME)
+
+        def _init_signals(self):
+            error_signals = {
+                "no_media_selected":            "No media selected",
+                "file_not_found":               "File not found",
+                "type_not_found":               "Type not found",
+                "unsupported_type":             "Unsupported type",
+                "gstreamer":                    "GStreamer Error",
+                "dsp":                          "DSP Error",
+                "device_unavailable":           "Device Unavailable",
+                "corrupted_file":               "Corrupted File",
+                "out_of_memory":                "Out of Memory",
+                "audio_codec_not_supported":    "Audio codec not supported"
+            }
+
+            # Connect status signals
+            self.audio_proxy.connect_to_signal( "state_changed",
+                                                self._on_state_changed )
+            self.audio_proxy.connect_to_signal( "end_of_stream",
+                                                lambda x: self._call_eos() )
+
+            # Connect error signals
+            for error, msg in error_signals.iteritems():
+                self.audio_proxy.connect_to_signal(error, lambda *x: self._error(msg))
+
+        def _error(self, msg):
+            log.error(msg)
+
+        def _call_eos(self):
+            self._on_eos()
+
+        def _on_state_changed(self, state):
+            states = ("playing", "paused", "stopped")
+            self.__state = state if state in states else 'none'
+
+    PlayerBackend = OssoPlayer
+else:
+    PlayerBackend = GStreamer
+
 class Playlist(object):
     class Entry(object):
         def __init__(self, data):
@@ -233,8 +337,8 @@ class Playlist(object):
 
 class Player(Playlist):
     def __init__(self):
-        self.gstreamer = GStreamer()
-        self.gstreamer.set_eos_callback(self._on_eos)
+        self.backend = PlayerBackend()
+        self.backend.set_eos_callback(self._on_eos)
         self.playlist = None
 
     def play(self, playlist = None):
@@ -244,17 +348,16 @@ class Player(Playlist):
             if self.playlist.has_next():
                 entry = self.playlist.next()
                 log.debug("playing %s", entry)
-                self.gstreamer.setup(entry.type, entry.url)
-                self.gstreamer.play()
+                self.backend.play_url(entry.type, entry.url)
 
     def pause(self):
-        self.gstreamer.pause()
+        self.backend.pause()
 
     def stop(self):
-        self.gstreamer.stop()
+        self.backend.stop()
 
     def playing(self):
-        return self.gstreamer.playing()
+        return self.backend.playing()
 
     def next(self):
         if self.playlist.has_next():
