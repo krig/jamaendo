@@ -18,7 +18,7 @@ class Refresher(object):
         self.done = False
         self.last_percent = 0
         print "Preparing local database..."
-    def complete(self):
+    def complete(self, status):
         self.done = True
     def progress(self, percent):
         if percent - self.last_percent >= 5:

@@ -1,6 +1,7 @@
 import urllib, threading, os, gzip, time, simplejson, re
 _DUMP_URL = '''http://img.jamendo.com/data/dbdump_artistalbumtrack.xml.gz'''
 _DUMP = os.path.expanduser('''~/.cache/jamaendo/dbdump.xml.gz''')
+_DUMP_TMP = os.path.expanduser('''~/.cache/jamaendo/new_dbdump.xml.gz''')
 
 try:
     os.makedirs(os.path.dirname(_DUMP))
@@ -21,7 +22,7 @@ def refresh_dump(complete_callback, progress_callback=None, force=False):
         downloader = Downloader(complete_callback, progress_callback)
         downloader.start()
     else:
-        complete_callback()
+        complete_callback(True)
 
 class Downloader(threading.Thread):
     def __init__(self, complete_callback, progress_callback):
@@ -38,8 +39,15 @@ class Downloader(threading.Thread):
             self.progress_callback(percent)
 
     def run(self):
-        urllib.urlretrieve(_DUMP_URL, _DUMP, self.actual_callback)
-        self.complete_callback()
+        success = True
+        try:
+            urllib.urlretrieve(_DUMP_URL, _DUMP_TMP, self.actual_callback)
+            if os.path.isfile(_DUMP):
+                os.remove(_DUMP)
+            os.rename(_DUMP_TMP, _DUMP)
+        except Exception, e:
+            success = False
+        self.complete_callback(success)
 
 def fast_iter(context, func):
     for event, elem in context:
