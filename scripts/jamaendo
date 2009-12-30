@@ -1,5 +1,12 @@
 #!/usr/bin/env python2.5
 
+# Dependencies:
+
+# python-simplejson
+# python-lxml
+# python-gst0.10
+
+
 # debugging hack - add . to path
 import os, sys
 local_module_dir = os.path.join(os.path.dirname(sys.argv[0]), '..')
