@@ -277,14 +277,14 @@ if util.platform == 'maemo':
             }
 
             # Connect status signals
-            self.audio_proxy.connect_to_signal( "state_changed",
+            self._audio.connect_to_signal( "state_changed",
                                                 self._on_state_changed )
-            self.audio_proxy.connect_to_signal( "end_of_stream",
+            self._audio.connect_to_signal( "end_of_stream",
                                                 lambda x: self._call_eos() )
 
             # Connect error signals
             for error, msg in error_signals.iteritems():
-                self.audio_proxy.connect_to_signal(error, lambda *x: self._error(msg))
+                self._audio.connect_to_signal(error, lambda *x: self._error(msg))
 
         def _error(self, msg):
             log.error(msg)

@@ -14,6 +14,8 @@ import gobject
 from jamaendo.api import LocalDB, Query, Queries, refresh_dump
 from jamaui.player import Player, Playlist
 
+import ossohelper
+
 gobject.threads_init()
 
 log = logging.getLogger(__name__)
@@ -27,6 +29,10 @@ except:
     else:
         log.critical('This ui only works in maemo')
         sys.exit(1)
+
+from dbus.mainloop.glib import DBusGMainLoop
+
+DBusGMainLoop(set_as_default=True)
 
 class RefreshDialog(object):
     def __init__(self):
@@ -178,11 +184,19 @@ class SearchWindow(hildon.StackableWindow):
         hbox.pack_start(self.entry, True, True, 0)
         hbox.pack_start(btn, False)
 
+        btnbox = gtk.HBox()
+        playbtn = hildon.GtkButton(gtk.HILDON_SIZE_FINGER_HEIGHT)
+        playbtn.set_label("Play selected")
+        playbtn.connect('clicked', self.play_selected)
+        btnbox.pack_start(playbtn, False)
+
         self.results = hildon.TouchSelector(text=True)
         self.results.connect("changed", self.selection_changed)
+        self.results.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
 
         vbox.pack_start(hbox, False)
         vbox.pack_start(self.results, True, True, 0)
+        vbox.pack_start(btnbox, False)
 
         self.add(vbox)
 
@@ -202,7 +216,10 @@ class SearchWindow(hildon.StackableWindow):
             self.results.append_text(title)
 
     def selection_changed(self, results, userdata):
-        current_selection = results.get_current_text()
+        pass
+
+    def play_selected(self, btn):
+        current_selection = self.results.get_current_text()
 
         album = self.idmap[current_selection]
         selected = [int(album['id'])]
@@ -371,11 +388,13 @@ class Jamaui(object):
     '''
 
     def run(self):
+        ossohelper.application_init('org.jamaendo', '0.1')
         self.create_window()
         self.create_menu()
         self.setup_widgets()
         self.window.show_all()
         gtk.main()
+        ossohelper.application_exit()
 
 if __name__=="__main__":
     ui = Jamaui()
