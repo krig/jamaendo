@@ -54,7 +54,7 @@ class GStreamer(object):
         # 1. Weird volume bugs in playbin when playing ogg or wma files
         # 2. When seeking the DSPs sometimes lie about the real position info
         if util.platform == 'maemo':
-            if not self._maemo_setup_hardware_player(filetype):
+            if True or not self._maemo_setup_hardware_player(filetype):
                 self._maemo_setup_software_player()
                 log.debug( 'Using software decoding (maemo)' )
             else:
@@ -214,6 +214,8 @@ class Playlist(object):
             return "{%s}" % (", ".join([str(self.name), str(self.numalbum), str(self.url)]))
 
     def __init__(self, items = []):
+        if items is None:
+            items = []
         self.items = [Playlist.Entry(item) for item in items]
         self.current = -1
 
