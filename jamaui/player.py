@@ -74,7 +74,9 @@ class GStreamer(_Player):
         # On maemo use software decoding to workaround some bugs their gst:
         # 1. Weird volume bugs in playbin when playing ogg or wma files
         # 2. When seeking the DSPs sometimes lie about the real position info
-        if util.platform == 'maemo':
+        if True:
+            self._maemo_setup_playbin_player(uri)
+        elif util.platform == 'maemo':
             if not self._maemo_setup_hardware_player(filetype):
                 self._maemo_setup_software_player()
                 log.debug( 'Using software decoding (maemo)' )
@@ -118,6 +120,14 @@ class GStreamer(_Player):
         if self.player:
             self.player.set_state(gst.STATE_NULL)
             self.player = None
+
+    def _maemo_setup_playbin_player(self, url):
+        self.player = gst.parse_launch("playbin2 uri=%s" % (url,))
+        self.filesrc = self.player
+        self.filesrc_property = 'uri'
+        self.volume_control = self.player
+        self.volume_multiplier = 1.
+        self.volume_property = 'volume'
 
     def _maemo_setup_hardware_player( self, filetype ):
         """ Setup a hardware player for mp3 or aac audio using
@@ -296,9 +306,9 @@ if util.platform == 'maemo':
             states = ("playing", "paused", "stopped")
             self.__state = state if state in states else 'none'
 
-    PlayerBackend = OssoPlayer
-else:
-    PlayerBackend = GStreamer
+#    PlayerBackend = OssoPlayer
+#else:
+PlayerBackend = GStreamer
 
 class Playlist(object):
     class Entry(object):
