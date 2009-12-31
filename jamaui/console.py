@@ -7,7 +7,7 @@ if os.path.isdir(local_module_dir):
     sys.path.append(local_module_dir)
 
 import jamaendo
-from jamaui.player import Player, Playlist
+from jamaui.player import Player, Playlist, the_player
 import time
 import gobject
 
@@ -52,7 +52,7 @@ class Console(object):
 
     def play_tracks(self, tracks):
         playlist = Playlist(tracks)
-        player = Player()
+        player = the_player
         player.play(playlist)
 
         while player.playing():

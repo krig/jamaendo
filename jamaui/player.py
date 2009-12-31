@@ -409,3 +409,5 @@ class Player(Playlist):
     def _on_eos(self):
         log.debug("EOS!")
         self.next()
+
+the_player = Player() # the player instance

@@ -1,19 +1,8 @@
-# debugging hack - add . to path
 import os, sys
-local_module_dir = os.path.join(os.path.dirname(sys.argv[0]), '..')
-if os.path.isdir(local_module_dir):
-    sys.path.append(local_module_dir)
-
 import gtk
 import gobject
 import util
 import logging
-import gobject
-
-# we don't use the local DB...
-import jamaendo
-from jamaui.player import Player, Playlist
-from util import jsonprint
 
 import ossohelper
 
@@ -35,182 +24,28 @@ from dbus.mainloop.glib import DBusGMainLoop
 
 DBusGMainLoop(set_as_default=True)
 
-_the_playerwindow = None
+from playerwindow import open_playerwindow
+from search import SearchWindow
 
-class PlayerWindow(hildon.StackableWindow):
-    def __init__(self, playlist=None):
-        hildon.StackableWindow.__init__(self)
-        self.set_title("jamaendo")
-
-        self.connect('hide', self.on_hide)
-        self.connect('destroy', self.on_destroy)
-
-        self.playlist = Playlist(playlist)
-        self.player = Player()
-
-        vbox = gtk.VBox()
-
-        hbox = gtk.HBox()
-
-        self.cover = gtk.Image()
-        self.cover.set_size_request(200, 200)
-        self.cover.set_from_stock(gtk.STOCK_CDROM, gtk.ICON_SIZE_DIALOG)
-
-        vbox2 = gtk.VBox()
-
-        self.playlist_pos = gtk.Label()
-        self.track = gtk.Label()
-        self.progress = hildon.GtkHScale()
-        self.artist = gtk.Label()
-        self.album = gtk.Label()
-
-        self.set_labels('track name', 'artist', 'album', 0, 0)
-
-        vbox2.pack_start(self.track, True)
-        vbox2.pack_start(self.artist, False)
-        vbox2.pack_start(self.album, False)
-        vbox2.pack_start(self.playlist_pos, False)
-        vbox2.pack_start(self.progress, False)
-
-        hbox.pack_start(self.cover, True, True, 0)
-        hbox.pack_start(vbox2, True, True, 0)
-
-        vbox.pack_start(hbox, True, True, 0)
-
-        btns = gtk.HButtonBox()
-        btns.set_property('layout-style', gtk.BUTTONBOX_SPREAD)
-
-        vbox.pack_end(btns, False, True, 0)
-
-        self.add_stock_button(btns, gtk.STOCK_MEDIA_PREVIOUS, self.on_prev)
-        self.add_stock_button(btns, gtk.STOCK_MEDIA_PLAY, self.on_play)
-        self.add_stock_button(btns, gtk.STOCK_MEDIA_PAUSE, self.on_pause)
-        self.add_stock_button(btns, gtk.STOCK_MEDIA_STOP, self.on_stop)
-        self.add_stock_button(btns, gtk.STOCK_MEDIA_NEXT, self.on_next)
-
-        self.add(vbox)
-
-        print "Created player window, playlist: %s" % (self.playlist)
-
-    def on_hide(self, wnd):
-        print "Hiding player window"
-
-    def on_destroy(self, wnd):
-        print "Destroying player window"
-        if self.player:
-            self.player.stop()
-        global _the_playerwindow
-        _the_playerwindow = None
-
-    def add_stock_button(self, btns, stock, cb):
-        btn = hildon.GtkButton(gtk.HILDON_SIZE_FINGER_HEIGHT)
-        btn.set_relief(gtk.RELIEF_NONE)
-        btn.set_image(gtk.image_new_from_stock(stock, gtk.ICON_SIZE_SMALL_TOOLBAR))
-        btn.connect('clicked', cb)
-        btns.add(btn)
-
-    def set_labels(self, track, artist, album, playlist_pos, playlist_size):
-        self.playlist_pos.set_markup('<span size="small">%s/%s songs</span>'%(playlist_pos, playlist_size))
-        self.track.set_markup('<span size="x-large">%s</span>'%(track))
-        self.artist.set_markup('<span size="large">%s</span>'%(artist))
-        self.album.set_markup('<span foreground="#aaaaaa">%s</span>'%(album))
-
-    def update_state(self):
-        item = self.playlist.current()
-        if item:
-            if not item.name:
-                item.load()
-            print "current:", item
-            self.set_labels(item.name, item.artist_name, item.album_name,
-                            self.playlist.current_index(), self.playlist.size())
-            coverfile = jamaendo.get_album_cover(int(item.album_id), size=200)
-            print "coverfile:", coverfile
-            self.cover.set_from_file(coverfile)
-
-    def play_tracks(self, tracks):
-        self.playlist = Playlist(playlist)
-        self.player.play(self.playlist)
-        self.update_state()
-
-    def on_play(self, button):
-        self.player.play(self.playlist)
-        self.update_state()
-    def on_pause(self, button):
-        self.player.pause()
-    def on_prev(self, button):
-        self.player.prev()
-        self.update_state()
-    def on_next(self, button):
-        self.player.next()
-        self.update_state()
-    def on_stop(self, button):
-        self.player.stop()
-
-def open_playerwindow(tracks):
-    global _the_playerwindow
-    if _the_playerwindow:
-        hildon.WindowStack.push_1(_the_playerwindow)
-        _the_playerwindow.play_tracks(tracks)
-    else:
-        _the_playerwindow = PlayerWindow(tracks)
-        _the_playerwindow.show_all()
-    return _the_playerwindow
-
-class SearchWindow(hildon.StackableWindow):
+class ArtistWindow(hildon.StackableWindow):
     def __init__(self):
         hildon.StackableWindow.__init__(self)
-        self.set_title("Search")
+        self.set_title("View Artist")
 
+        label = gtk.Label("Artist information")
         vbox = gtk.VBox(False, 0)
-
-        hbox = gtk.HBox()
-        self.entry = hildon.Entry(gtk.HILDON_SIZE_FINGER_HEIGHT)
-        self.entry.set_placeholder("Search")
-        self.entry.connect('activate', self.on_search)
-        btn = hildon.GtkButton(gtk.HILDON_SIZE_FINGER_HEIGHT)
-        btn.set_label("Go")
-        btn.connect('clicked', self.on_search)
-        hbox.pack_start(self.entry, True, True, 0)
-        hbox.pack_start(btn, False)
-
-        btnbox = gtk.HBox()
-        playbtn = hildon.GtkButton(gtk.HILDON_SIZE_FINGER_HEIGHT)
-        playbtn.set_label("Play selected")
-        playbtn.connect('clicked', self.play_selected)
-        btnbox.pack_start(playbtn, False)
-
-        self.results = hildon.TouchSelector(text=True)
-        self.results.connect("changed", self.selection_changed)
-        self.results.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
-
-        vbox.pack_start(hbox, False)
-        vbox.pack_start(self.results, True, True, 0)
-        vbox.pack_start(btnbox, False)
-
+        vbox.pack_start(label, True, True, 0)
         self.add(vbox)
 
-        self.idmap = {}
+class AlbumWindow(hildon.StackableWindow):
+    def __init__(self):
+        hildon.StackableWindow.__init__(self)
+        self.set_title("View Album")
 
-        self.pwnd = None
-
-    def on_search(self, w):
-        txt = self.entry.get_text()
-        for album in jamaendo.search_albums(query=txt):
-            title = "%s - %s" % (album.artist_name, album.name)
-            self.idmap[title] = album
-            self.results.append_text(title)
-
-    def selection_changed(self, results, userdata):
-        pass
-
-    def play_selected(self, btn):
-        current_selection = self.results.get_current_text()
-
-        album = self.idmap[current_selection]
-        tracks = jamaendo.get_tracks(album.ID)
-        if tracks:
-            wnd = open_playerwindow(tracks)
-            wnd.on_play(None)
+        label = gtk.Label("Album information")
+        vbox = gtk.VBox(False, 0)
+        vbox.pack_start(label, True, True, 0)
+        self.add(vbox)
 
 class RadiosWindow(hildon.StackableWindow):
     def __init__(self):
@@ -324,7 +159,7 @@ class Jamaui(object):
             self.window.window.set_back_pixmap(background, False)
 
         bbox = gtk.HButtonBox()
-        alignment = gtk.Alignment(xalign=0.0, yalign=0.8, xscale=1.0)
+        alignment = gtk.Alignment(xalign=0.2, yalign=0.925, xscale=1.0)
         alignment.add(bbox)
         bbox.set_property('layout-style', gtk.BUTTONBOX_SPREAD)
         self.bbox = bbox
@@ -375,8 +210,8 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
         self.featuredwnd.show_all()
 
     def on_radios(self, button):
-        self.radiownd = RadioWindow()
-        self.radiownd.show_all()
+        self.radioswnd = RadiosWindow()
+        self.radioswnd.show_all()
 
     def on_search(self, button):
         self.searchwnd = SearchWindow()
