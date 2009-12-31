@@ -11,7 +11,7 @@ import logging
 import gobject
 
 # we don't use the local DB...
-from jamaendo.api import LocalDB, Query, Queries, refresh_dump
+import jamaendo
 from jamaui.player import Player, Playlist
 from util import jsonprint
 
@@ -48,6 +48,8 @@ class PlayerWindow(hildon.StackableWindow):
         hbox = gtk.HBox()
 
         self.cover = gtk.Image()
+        self.cover.set_size_request(160, 160)
+        self.cover.set_from_stock(gtk.STOCK_CDROM, gtk.ICON_SIZE_DIALOG)
 
         vbox2 = gtk.VBox()
 
@@ -91,15 +93,15 @@ class PlayerWindow(hildon.StackableWindow):
     def update_state(self):
         item = self.playlist.current()
         if item:
+            if not item.name:
+                item.load()
             self.track.set_text(item.name)
             self.playlist_pos.set_text("%d/%d songs",
                                        self.playlist.current_index(),
                                        len(self.playlist))
-            self.artist.set_text("Unknown")
-            self.album.set_text("Unknown")
-            if item.image:
-                pass
-                #self.cover = self.get_cover(item.image)
+            self.artist.set_text(item.artist_name)
+            self.album.set_text(item.album_name)
+            self.cover.set_from_file(jamaendo.get_album_cover(item.album_id, size=160))
 
     def on_play(self, button):
         self.player.play(self.playlist)
@@ -154,8 +156,8 @@ class SearchWindow(hildon.StackableWindow):
 
     def on_search(self, w):
         txt = self.entry.get_text()
-        for album in Queries.search_albums(query=txt):
-            title = "%s - %s" % (album['artist_name'], album['name'])
+        for album in jamaendo.search_albums(query=txt):
+            title = "%s - %s" % (album.artist_name, album.name)
             self.idmap[title] = album
             self.results.append_text(title)
 
@@ -166,10 +168,8 @@ class SearchWindow(hildon.StackableWindow):
         current_selection = self.results.get_current_text()
 
         album = self.idmap[current_selection]
-        selected = [int(album['id'])]
-        tracks = Queries.album_tracks(selected)
+        tracks = jamaendo.get_tracks(album.ID)
         if tracks:
-            jsonprint(tracks)
             self.pwnd = PlayerWindow(tracks)
             self.pwnd.show_all()
 
@@ -275,12 +275,14 @@ class Jamaui(object):
         elif os.path.isfile(os.path.join('/usr/share/jaemendo', name)):
             return os.path.join('/usr/share/jaemendo', name)
         else:
-            return name
+            return None
 
     def setup_widgets(self):
-        background, mask = gtk.gdk.pixbuf_new_from_file(self.find_resource(self._BG)).render_pixmap_and_mask()
-        self.window.realize()
-        self.window.window.set_back_pixmap(background, False)
+        bgimg = self.find_resource(self._BG)
+        if bgimg:
+            background, mask = gtk.gdk.pixbuf_new_from_file(bgimg).render_pixmap_and_mask()
+            self.window.realize()
+            self.window.window.set_back_pixmap(background, False)
 
         bbox = gtk.HButtonBox()
         alignment = gtk.Alignment(xalign=0.0, yalign=0.8, xscale=1.0)
