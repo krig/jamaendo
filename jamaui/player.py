@@ -26,6 +26,8 @@ import util
 import dbus
 import dbus.service
 
+import jamaendo
+
 log = logging.getLogger(__name__)
 
 class _Player(object):
@@ -215,12 +217,17 @@ class GStreamer(_Player):
         t = message.type
 
         if t == gst.MESSAGE_EOS:
+            log.info("End of stream")
             self.eos_callback()
-
+        elif t == gst.MESSAGE_STATE_CHANGED:
+            log.info("State changed: %s -> %s -> %s", old, new, pending)
+            old, new, pending = message.parse_state_changed()
         elif t == gst.MESSAGE_ERROR:
-            err, debug = message.parse_error()
             log.critical( 'Error: %s %s', err, debug )
+            err, debug = message.parse_error()
             self.stop()
+        else:
+            log.info("? %s", message.type)
 
     def set_eos_callback(self, cb):
         self.eos_callback = cb
@@ -311,33 +318,21 @@ if util.platform == 'maemo':
 PlayerBackend = GStreamer
 
 class Playlist(object):
-    class Entry(object):
-        def __init__(self, data):
-            if isinstance(data, dict):
-                self.id = data['id']
-                self.name = data['name']
-                self.image = data['image']
-                self.numalbum = int(data['numalbum'])
-                self.url = data['mp3']
-                self.type = 'mp3'
-            elif isinstance(data, basestring): # assume URI
-                self.id = 0
-                self.name = ''
-                self.image = None
-                self.numalbum = 0
-                self.url = data
-                self.type = 'mp3'
-        def __str__(self):
-            return "{%s}" % (", ".join([str(self.name), str(self.numalbum), str(self.url)]))
-
     def __init__(self, items = []):
         if items is None:
             items = []
-        self.items = [Playlist.Entry(item) for item in items]
+        for item in items:
+            assert(isinstance(item, jamaendo.Track))
+        self.items = items
         self._current = -1
 
     def add(self, item):
-        self.items.append(Playlist.Entry(item))
+        if isinstance(item, list):
+            for i in item:
+                assert(isinstance(i, jamaendo.Track))
+            self.items.extend(item)
+        else:
+            self.items.append(item)
 
     def next(self):
         if self.has_next():
@@ -372,7 +367,7 @@ class Player(Playlist):
             if self.playlist.has_next():
                 entry = self.playlist.next()
                 log.debug("playing %s", entry)
-                self.backend.play_url(entry.type, entry.url)
+                self.backend.play_url('mp3', entry.mp3_url())
 
     def pause(self):
         self.backend.pause()

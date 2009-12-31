@@ -6,97 +6,52 @@ local_module_dir = os.path.join(os.path.dirname(sys.argv[0]), '..')
 if os.path.isdir(local_module_dir):
     sys.path.append(local_module_dir)
 
-from jamaendo.api import LocalDB, Query, Queries, refresh_dump
+import jamaendo
 from jamaui.player import Player, Playlist
 import time
 import gobject
 
 gobject.threads_init()
 
-class Refresher(object):
-    def __init__(self):
-        self.done = False
-        self.last_percent = 0
-        print "Preparing local database..."
-    def complete(self, status):
-        self.done = True
-    def progress(self, percent):
-        if percent - self.last_percent >= 5:
-            print "\r%d%%" % (percent),
-            self.last_percent = percent
+import pprint
 
-    def run(self):
-        refresh_dump(self.complete, self.progress, force=False)
-        while not self.done:
-            time.sleep(1)
+pp = pprint.PrettyPrinter(indent=4)
 
-
-def pprint(x):
-    import simplejson
-    print simplejson.dumps(x, sort_keys=True, indent=4)
+#pp.pprint(stuff)
 
 class Console(object):
     def run(self):
-        Refresher().run()
-
         query = sys.argv[1]
 
-        queries = ['today',
-                   'tracks_this_month',
-                   'artist',
-                   'album',
-                   'play_track',
-                   'play_album']
+        queries = ['albums_of_the_week', 'artists', 'albums']
         if query in queries:
             getattr(self, "query_"+query)()
         else:
             print "Valid queries: " + ", ".join(queries)
 
-    def query_today(self):
-        result = Queries.albums_today()
-        pprint(result)
+    def query_albums_of_the_week(self):
+        result = jamaendo.albums_of_the_week()
+        pp.pprint([(a.ID, a.name) for a in result])
+        for a in result:
+            self.play_album(a)
 
-    def query_tracks_this_month(self):
-        result = Queries.tracks_this_month()
-        pprint(result)
+    def query_artists(self):
+        result = jamaendo.search_artists(sys.argv[2])
+        pp.pprint([(a.ID, a.name) for a in result])
+        for a in result:
+            albums = jamaendo.get_albums(a.ID)
+            for album in albums:
+                print "Playing album: %s - %s" % (a.name, album.name)
+                self.play_album(album)
 
-    def query_artist(self):
-        q = sys.argv[2]
-        db = LocalDB()
-        db.connect()
-        for artist in db.search_artists(q):
-            pprint(artist)
+    def query_albums(self):
+        result = jamaendo.search_albums(sys.argv[2])
+        pp.pprint([(a.ID, a.name) for a in result])
+        for a in result:
+            self.play_album(a)
 
-    def query_album(self):
-        q = sys.argv[2]
-        db = LocalDB()
-        db.connect()
-        for album in db.search_albums(q):
-            print "%s: %s - %s" % (album['id'], album['artist'], album['name'])
-
-    def query_play_track(self):
-        trackid = int(sys.argv[2])
-        uri = Query.track_mp3(trackid)
-        playlist = Playlist([uri])
-        player = Player()
-        player.play(playlist)
-
-        while player.playing():
-            time.sleep(1)
-
-    def query_play_album(self):
-        albumid = int(sys.argv[2])
-        db = LocalDB()
-        db.connect()
-        album = None
-        for a in db.get_albums([albumid]):
-            album = a
-            break
-        if not album:
-            return
-        print "%s - %s" % (album['artist'], album['name'])
-
-        playlist = Playlist(album['tracks'])
+    def play_tracks(self, tracks):
+        playlist = Playlist(tracks)
         player = Player()
         player.play(playlist)
 
@@ -105,6 +60,13 @@ class Console(object):
                 time.sleep(1)
             except KeyboardInterrupt:
                 player.next()
+
+    def play_album(self, album):
+        if not album.tracks:
+            album.load()
+        print "%s - %s" % (album.artist_name, album.name)
+        if album.tracks:
+            self.play_tracks(album.tracks)
 
 if __name__=="__main__":
     main()

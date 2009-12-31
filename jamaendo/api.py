@@ -97,7 +97,7 @@ class Artist(LazyQuery):
             self.set_from_json(json)
 
     def _needs_load(self):
-        return self._needs_load_impl('name', 'image', 'albums')
+        return self._needs_load_impl('name', 'albums')
 
     def _set_from(self, other):
         return self._set_from_impl(other, 'name', 'image', 'albums')
@@ -139,7 +139,7 @@ class Track(LazyQuery):
        return _OGGURL%(self.ID)
 
     def _needs_load(self):
-        return self._needs_load_impl('name', 'image', 'artist_name', 'album_name', 'album_id', 'numalbum', 'duration')
+        return self._needs_load_impl('name', 'artist_name', 'album_name', 'album_id', 'numalbum', 'duration')
 
     def _set_from(self, other):
         return self._set_from_impl(other, 'name', 'image', 'artist_name', 'album_name', 'album_id', 'numalbum', 'duration')
@@ -175,8 +175,8 @@ _CACHED_RADIOS = 10
 # TODO: cache queries?
 
 class Query(object):
-    last_query = time.time()
     rate_limit = 1.0 # max queries per second
+    last_query = time.time() - 1.5
 
     @classmethod
     def _ratelimit(cls):
@@ -189,7 +189,8 @@ class Query(object):
         pass
 
     def _geturl(self, url):
-        print "geturl: %s" % (url)
+        print "*** %s" % (url)
+        Query._ratelimit()
         f = urllib.urlopen(url)
         ret = simplejson.load(f)
         f.close()
@@ -292,7 +293,7 @@ class GetQuery(Query):
             },
         'radio' : {
             'url' : _GET2+'+'.join(_TRACK_FIELDS)+'/track/json/radio_track_inradioplaylist+track_album+album_artist/?',
-            'params' : 'order=numradio_asc&radio_id=%d',
+            'params' : 'order=random_asc&radio_id=%d',
             'constructor' : [Track]
             },
         'favorite_albums' : {
@@ -382,6 +383,8 @@ def get_artist(artist_id):
         if not a:
             raise JamendoAPIException(str(q))
         _update_cache(_artists, a)
+        if isinstance(a, list):
+            a = a[0]
     return a
 
 def get_albums(artist_id):
@@ -402,6 +405,8 @@ def get_album(album_id):
         if not a:
             raise JamendoAPIException(str(q))
         _update_cache(_albums, a)
+        if isinstance(a, list):
+            a = a[0]
     return a
 
 def get_tracks(album_id):
@@ -422,6 +427,8 @@ def get_track(track_id):
         if not a:
             raise JamendoAPIException(str(q))
         _update_cache(_tracks, a)
+        if isinstance(a, list):
+            a = a[0]
     return a
 
 def get_radio_tracks(radio_id):
@@ -494,9 +501,8 @@ def get_radio(radio_id):
     if not js:
         raise JamendoAPIException(str(q))
     if isinstance(js, list):
-        return [Radio(x['id'], json=x) for x in js]
-    else:
-        return Radio(radio_id, json=js)
+        ks = js[0]
+    return Radio(radio_id, json=js)
 
 def starred_radios():
     """Returns: [Radio]"""
@@ -526,6 +532,7 @@ Artist.load = _artist_loader
 def _album_loader(self):
     if self._needs_load():
         album = get_album(self.ID)
+        album.tracks = get_tracks(self.ID)
         self._set_from(album)
 Album.load = _album_loader
 
