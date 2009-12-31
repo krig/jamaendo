@@ -217,14 +217,14 @@ class GStreamer(_Player):
         t = message.type
 
         if t == gst.MESSAGE_EOS:
-            log.info("End of stream")
             self.eos_callback()
+            log.info("End of stream")
         elif t == gst.MESSAGE_STATE_CHANGED:
-            log.info("State changed: %s -> %s -> %s", old, new, pending)
             old, new, pending = message.parse_state_changed()
+            log.info("State changed: %s -> %s -> %s", old, new, pending)
         elif t == gst.MESSAGE_ERROR:
-            log.critical( 'Error: %s %s', err, debug )
             err, debug = message.parse_error()
+            log.critical( 'Error: %s %s', err, debug )
             self.stop()
         else:
             log.info("? %s", message.type)

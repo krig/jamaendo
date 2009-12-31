@@ -21,7 +21,7 @@
 import os
 import logging
 
-__log = logging.getLogger('panucci.ossohelper')
+__log = logging.getLogger(__name__)
 
 try:
     import osso

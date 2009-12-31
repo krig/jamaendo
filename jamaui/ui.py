@@ -53,11 +53,13 @@ class PlayerWindow(hildon.StackableWindow):
 
         vbox2 = gtk.VBox()
 
-        self.playlist_pos = gtk.Label("0/0 songs")
-        self.track = gtk.Label("Track name")
+        self.playlist_pos = gtk.Label()
+        self.track = gtk.Label()
         self.progress = hildon.GtkHScale()
-        self.artist = gtk.Label("Artist")
-        self.album = gtk.Label("Album")
+        self.artist = gtk.Label()
+        self.album = gtk.Label()
+
+        self.set_labels('track name', 'artist', 'album', 0, 0)
 
         vbox2.pack_start(self.playlist_pos, False)
         vbox2.pack_start(self.track, False)
@@ -90,17 +92,20 @@ class PlayerWindow(hildon.StackableWindow):
         btn.connect('clicked', cb)
         btns.add(btn)
 
+    def set_labels(self, track, artist, album, playlist_pos, playlist_size):
+        self.playlist_pos.set_markup('<span size="small">%s/%s songs</span>'%(playlist_pos, playlist_size))
+        self.track.set_markup('<span size="large">%s</span>'%(track))
+        self.artist.set_markup(artist)
+        self.album.set_markup('<span foreground="#cccccc">%s</span>'%(album))
+
     def update_state(self):
         item = self.playlist.current()
         if item:
             if not item.name:
                 item.load()
-            self.track.set_text(item.name)
-            self.playlist_pos.set_text("%d/%d songs",
-                                       self.playlist.current_index(),
-                                       len(self.playlist))
-            self.artist.set_text(item.artist_name)
-            self.album.set_text(item.album_name)
+            print "current:", item
+            self.set_labels(item.name, item.artist_name, item.album_name,
+                            self.playlist.current_index(), len(self.playlist))
             self.cover.set_from_file(jamaendo.get_album_cover(item.album_id, size=160))
 
     def on_play(self, button):
