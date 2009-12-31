@@ -288,7 +288,7 @@ class GetQuery(Query):
             },
         'tracks' : {
             'url' : _GET2+'+'.join(_TRACK_FIELDS)+'/track/json/track_album+album_artist?',
-            'params' : 'album_id=%d',
+            'params' : 'order=numalbum_asc&album_id=%d',
             'constructor' : [Track]
             },
         'radio' : {

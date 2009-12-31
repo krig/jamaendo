@@ -340,8 +340,17 @@ class Playlist(object):
             return self.items[self._current]
         return None
 
+    def prev(self):
+        if self.has_prev():
+            self._current = self._current - 1
+            return self.items[self._current]
+        return None
+
     def has_next(self):
         return self._current < (len(self.items)-1)
+
+    def has_prev(self):
+        return self._current > 0
 
     def current(self):
         if self._current >= 0:
@@ -351,19 +360,25 @@ class Playlist(object):
     def current_index(self):
         return self._current
 
-    def __len__(self):
+    def size(self):
+        print type(self)
         return len(self.items)
+
+    def __repr__(self):
+        return "Playlist(%s)"%(", ".join([str(item) for item in self.items]))
 
 class Player(Playlist):
     def __init__(self):
         self.backend = PlayerBackend()
         self.backend.set_eos_callback(self._on_eos)
-        self.playlist = None
+        self.playlist = Playlist()
 
     def play(self, playlist = None):
         if playlist:
             self.playlist = playlist
-        if self.playlist is not None:
+        elif self.playlist is None:
+            self.playlist = Playlist()
+        if self.playlist.size():
             if self.playlist.has_next():
                 entry = self.playlist.next()
                 log.debug("playing %s", entry)
@@ -386,7 +401,10 @@ class Player(Playlist):
             self.stop()
 
     def prev(self):
-        pass
+        if self.playlist.has_prev():
+            entry = self.playlist.prev()
+            log.debug("playing %s", entry)
+            self.backend.play_url('mp3', entry.mp3_url())
 
     def _on_eos(self):
         log.debug("EOS!")

@@ -35,10 +35,15 @@ from dbus.mainloop.glib import DBusGMainLoop
 
 DBusGMainLoop(set_as_default=True)
 
+_the_playerwindow = None
+
 class PlayerWindow(hildon.StackableWindow):
     def __init__(self, playlist=None):
         hildon.StackableWindow.__init__(self)
         self.set_title("jamaendo")
+
+        self.connect('hide', self.on_hide)
+        self.connect('destroy', self.on_destroy)
 
         self.playlist = Playlist(playlist)
         self.player = Player()
@@ -48,7 +53,7 @@ class PlayerWindow(hildon.StackableWindow):
         hbox = gtk.HBox()
 
         self.cover = gtk.Image()
-        self.cover.set_size_request(160, 160)
+        self.cover.set_size_request(200, 200)
         self.cover.set_from_stock(gtk.STOCK_CDROM, gtk.ICON_SIZE_DIALOG)
 
         vbox2 = gtk.VBox()
@@ -61,11 +66,11 @@ class PlayerWindow(hildon.StackableWindow):
 
         self.set_labels('track name', 'artist', 'album', 0, 0)
 
-        vbox2.pack_start(self.playlist_pos, False)
-        vbox2.pack_start(self.track, False)
-        vbox2.pack_start(self.progress, True, True)
+        vbox2.pack_start(self.track, True)
         vbox2.pack_start(self.artist, False)
         vbox2.pack_start(self.album, False)
+        vbox2.pack_start(self.playlist_pos, False)
+        vbox2.pack_start(self.progress, False)
 
         hbox.pack_start(self.cover, True, True, 0)
         hbox.pack_start(vbox2, True, True, 0)
@@ -85,6 +90,18 @@ class PlayerWindow(hildon.StackableWindow):
 
         self.add(vbox)
 
+        print "Created player window, playlist: %s" % (self.playlist)
+
+    def on_hide(self, wnd):
+        print "Hiding player window"
+
+    def on_destroy(self, wnd):
+        print "Destroying player window"
+        if self.player:
+            self.player.stop()
+        global _the_playerwindow
+        _the_playerwindow = None
+
     def add_stock_button(self, btns, stock, cb):
         btn = hildon.GtkButton(gtk.HILDON_SIZE_FINGER_HEIGHT)
         btn.set_relief(gtk.RELIEF_NONE)
@@ -94,9 +111,9 @@ class PlayerWindow(hildon.StackableWindow):
 
     def set_labels(self, track, artist, album, playlist_pos, playlist_size):
         self.playlist_pos.set_markup('<span size="small">%s/%s songs</span>'%(playlist_pos, playlist_size))
-        self.track.set_markup('<span size="large">%s</span>'%(track))
-        self.artist.set_markup(artist)
-        self.album.set_markup('<span foreground="#cccccc">%s</span>'%(album))
+        self.track.set_markup('<span size="x-large">%s</span>'%(track))
+        self.artist.set_markup('<span size="large">%s</span>'%(artist))
+        self.album.set_markup('<span foreground="#aaaaaa">%s</span>'%(album))
 
     def update_state(self):
         item = self.playlist.current()
@@ -105,8 +122,15 @@ class PlayerWindow(hildon.StackableWindow):
                 item.load()
             print "current:", item
             self.set_labels(item.name, item.artist_name, item.album_name,
-                            self.playlist.current_index(), len(self.playlist))
-            self.cover.set_from_file(jamaendo.get_album_cover(item.album_id, size=160))
+                            self.playlist.current_index(), self.playlist.size())
+            coverfile = jamaendo.get_album_cover(int(item.album_id), size=200)
+            print "coverfile:", coverfile
+            self.cover.set_from_file(coverfile)
+
+    def play_tracks(self, tracks):
+        self.playlist = Playlist(playlist)
+        self.player.play(self.playlist)
+        self.update_state()
 
     def on_play(self, button):
         self.player.play(self.playlist)
@@ -121,6 +145,16 @@ class PlayerWindow(hildon.StackableWindow):
         self.update_state()
     def on_stop(self, button):
         self.player.stop()
+
+def open_playerwindow(tracks):
+    global _the_playerwindow
+    if _the_playerwindow:
+        hildon.WindowStack.push_1(_the_playerwindow)
+        _the_playerwindow.play_tracks(tracks)
+    else:
+        _the_playerwindow = PlayerWindow(tracks)
+        _the_playerwindow.show_all()
+    return _the_playerwindow
 
 class SearchWindow(hildon.StackableWindow):
     def __init__(self):
@@ -175,8 +209,8 @@ class SearchWindow(hildon.StackableWindow):
         album = self.idmap[current_selection]
         tracks = jamaendo.get_tracks(album.ID)
         if tracks:
-            self.pwnd = PlayerWindow(tracks)
-            self.pwnd.show_all()
+            wnd = open_playerwindow(tracks)
+            wnd.on_play(None)
 
 class RadiosWindow(hildon.StackableWindow):
     def __init__(self):
@@ -357,8 +391,7 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
         self.favoriteswnd.show_all()
 
     def on_player(self, button):
-        self.playerwnd = PlayerWindow()
-        self.playerwnd.show_all()
+        open_playerwindow([])
 
     '''
     def on_search(self, button):
