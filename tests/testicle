@@ -10,7 +10,7 @@ if os.path.isdir(local_module_dir):
 
 import time
 
-import jamaendo.api2 as api2
+import jamaendo as api2
 
 class Tests(object):
     def XXXtestSearchArtists(self):
@@ -51,6 +51,10 @@ class Tests(object):
         result = api2.get_radio(283)
         print "Result:", result
 
+    def testGetRadioTracks283(self):
+        result = api2.get_radio_tracks(283)
+        print "Result:", result
+
     def XXXtestGetArtist91(self):
         result = api2.get_artist(91)
         print "Result:", result
@@ -71,11 +75,15 @@ class Tests(object):
         result = api2.get_albums(91)
         print "Result:", result
 
-    def testGetAlbumCover27865(self):
+    def XXXtestFavoriteAlbumsKegie(self):
+        result = api2.favorite_albums('kegie')
+        print "Result:", result
+
+    def XXXtestGetAlbumCover27865(self):
         result = api2.get_album_cover(27865)
         print "Result:", result
 
-    def testGetAlbumCoverAsync27865(self):
+    def XXXtestGetAlbumCoverAsync27865(self):
         self.got_cover = False
         def gotit(cover):
             print "Got:", cover
