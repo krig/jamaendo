@@ -13,6 +13,7 @@ import gobject
 # we don't use the local DB...
 from jamaendo.api import LocalDB, Query, Queries, refresh_dump
 from jamaui.player import Player, Playlist
+from util import jsonprint
 
 import ossohelper
 
@@ -34,74 +35,6 @@ from dbus.mainloop.glib import DBusGMainLoop
 
 DBusGMainLoop(set_as_default=True)
 
-class RefreshDialog(object):
-    def __init__(self):
-        self.notebook = gtk.Notebook()
-        info = gtk.VBox()
-        info.pack_start(gtk.Label("Downloading complete DB from jamendo.com."), True, False)
-        info.pack_start(gtk.Label("This will download approximately 8 MB."), True, False)
-        self.force = hildon.GtkToggleButton(gtk.HILDON_SIZE_FINGER_HEIGHT)
-        self.force.set_label("Force refresh")
-
-        info.pack_start(self.force, True, False)
-        self.notebook.append_page(info)
-
-        pcont = gtk.VBox()
-        self.progress = gtk.ProgressBar()
-        pcont.pack_start(self.progress, True, False)
-        self.notebook.append_page(pcont,
-                                  gtk.Label("Updating Database"))
-        self.progress.set_fraction(0)
-        self.progress.set_orientation(gtk.PROGRESS_LEFT_TO_RIGHT)
-        self.progress.set_text("Downloading...")
-
-        self.notebook.append_page(gtk.Label("Database refreshed."))
-
-        self.dialog = hildon.WizardDialog(None, "Refresh", self.notebook)
-        self.notebook.connect("switch-page", self.on_switch)
-        self.dialog.set_forward_page_func(self.forward_func)
-
-        self.refresher = None
-
-    def on_complete(self, status):
-        hildon.hildon_gtk_window_set_progress_indicator(self.dialog, 0)
-        if status:
-            self.progress.set_fraction(1)
-            self.progress.set_text("DB up to date.")
-        else:
-            self.progress.set_fraction(0)
-            self.progress.set_text("Download failed.")
-
-    def on_progress(self, percent):
-        if percent < 100:
-            self.progress.set_text("Downloading...")
-        self.progress.set_fraction(percent/100.0)
-
-    def on_switch(self, notebook, page, num):
-        if num == 1:
-            hildon.hildon_gtk_window_set_progress_indicator(self.dialog, 1)
-            refresh_dump(self.on_complete, self.on_progress, force=self.force.get_active())
-        elif self.refresher:
-            # cancel download
-            pass
-        return True
-
-    def forward_func(self, notebook, current, userdata):
-        #page = notebook.get_nth_page(current)
-        if current == 0:
-            return True
-        else:
-            return False
-
-    def show_all(self):
-        self.dialog.show_all()
-
-    def run(self):
-        self.dialog.run()
-
-    def hide(self):
-        self.dialog.hide()
-
 class PlayerWindow(hildon.StackableWindow):
     def __init__(self, playlist=None):
         hildon.StackableWindow.__init__(self)
@@ -109,29 +42,28 @@ class PlayerWindow(hildon.StackableWindow):
 
         self.playlist = Playlist(playlist)
         self.player = Player()
-        #self.player.play(playlist)
 
         vbox = gtk.VBox()
 
         hbox = gtk.HBox()
 
-        cover = gtk.Image()
+        self.cover = gtk.Image()
 
         vbox2 = gtk.VBox()
 
-        playlist_pos = gtk.Label("0/0 songs")
-        track = gtk.Label("Track name")
-        progress = hildon.GtkHScale()
-        artist = gtk.Label("Artist")
-        album = gtk.Label("Album")
+        self.playlist_pos = gtk.Label("0/0 songs")
+        self.track = gtk.Label("Track name")
+        self.progress = hildon.GtkHScale()
+        self.artist = gtk.Label("Artist")
+        self.album = gtk.Label("Album")
 
-        vbox2.pack_start(playlist_pos, False)
-        vbox2.pack_start(track, False)
-        vbox2.pack_start(progress, True, True)
-        vbox2.pack_start(artist, False)
-        vbox2.pack_start(album, False)
+        vbox2.pack_start(self.playlist_pos, False)
+        vbox2.pack_start(self.track, False)
+        vbox2.pack_start(self.progress, True, True)
+        vbox2.pack_start(self.artist, False)
+        vbox2.pack_start(self.album, False)
 
-        hbox.pack_start(cover, True, True, 0)
+        hbox.pack_start(self.cover, True, True, 0)
         hbox.pack_start(vbox2, True, True, 0)
 
         vbox.pack_start(hbox, True, True, 0)
@@ -156,14 +88,30 @@ class PlayerWindow(hildon.StackableWindow):
         btn.connect('clicked', cb)
         btns.add(btn)
 
+    def update_state(self):
+        item = self.playlist.current()
+        if item:
+            self.track.set_text(item.name)
+            self.playlist_pos.set_text("%d/%d songs",
+                                       self.playlist.current_index(),
+                                       len(self.playlist))
+            self.artist.set_text("Unknown")
+            self.album.set_text("Unknown")
+            if item.image:
+                pass
+                #self.cover = self.get_cover(item.image)
+
     def on_play(self, button):
         self.player.play(self.playlist)
+        self.update_state()
     def on_pause(self, button):
         self.player.pause()
     def on_prev(self, button):
         self.player.prev()
+        self.update_state()
     def on_next(self, button):
         self.player.next()
+        self.update_state()
     def on_stop(self, button):
         self.player.stop()
 
@@ -206,13 +154,9 @@ class SearchWindow(hildon.StackableWindow):
 
     def on_search(self, w):
         txt = self.entry.get_text()
-        print "Search for: %s" % (txt)
-        #db = LocalDB()
-        #db.connect()
         for album in Queries.search_albums(query=txt):
             title = "%s - %s" % (album['artist_name'], album['name'])
             self.idmap[title] = album
-            print "Found %s" % (album)
             self.results.append_text(title)
 
     def selection_changed(self, results, userdata):
@@ -223,12 +167,31 @@ class SearchWindow(hildon.StackableWindow):
 
         album = self.idmap[current_selection]
         selected = [int(album['id'])]
-        print "Selected: %s" % (selected)
         tracks = Queries.album_tracks(selected)
         if tracks:
-            print "Playing: %s" % (tracks)
+            jsonprint(tracks)
             self.pwnd = PlayerWindow(tracks)
             self.pwnd.show_all()
+
+class RadiosWindow(hildon.StackableWindow):
+    def __init__(self):
+        hildon.StackableWindow.__init__(self)
+        self.set_title("Radios")
+
+        label = gtk.Label("Radios")
+        vbox = gtk.VBox(False, 0)
+        vbox.pack_start(label, True, True, 0)
+        self.add(vbox)
+
+class FeaturedWindow(hildon.StackableWindow):
+    def __init__(self):
+        hildon.StackableWindow.__init__(self)
+        self.set_title("Featured")
+
+        label = gtk.Label("featured")
+        vbox = gtk.VBox(False, 0)
+        vbox.pack_start(label, True, True, 0)
+        self.add(vbox)
 
 class PlaylistsWindow(hildon.StackableWindow):
     def __init__(self):
@@ -279,6 +242,16 @@ class Jamaui(object):
         player.connect("clicked", self.on_player)
         self.menu.append(player)
 
+        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        player.set_label("Favorites")
+        player.connect("clicked", self.on_favorites)
+        self.menu.append(player)
+
+        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        player.set_label("Playlists")
+        player.connect("clicked", self.on_playlists)
+        self.menu.append(player)
+
         # Don't use localdb ATM
         #refresh = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
         #refresh.set_label("Refresh")
@@ -316,9 +289,9 @@ class Jamaui(object):
         self.bbox = bbox
         self.window.add(alignment)
 
+        self.add_mainscreen_button("Featured", "Most listened to", self.on_featured)
+        self.add_mainscreen_button("Radios", "The best in free music", self.on_radios)
         self.add_mainscreen_button("Search", "Search for artists/albums", self.on_search)
-        self.add_mainscreen_button("Playlists", "Browse playlists", self.on_playlists)
-        self.add_mainscreen_button("Favorites", "Your favorite albums", self.on_favorites)
 
         self.window.show_all()
 
@@ -337,9 +310,10 @@ class Jamaui(object):
         dialog = gtk.AboutDialog()
         dialog.set_website("http://github.com/krig")
         dialog.set_website_label("http://github.com/krig")
-        dialog.set_name("Jamaendo")
         dialog.set_authors(("Kristoffer Gronlund (Purple Scout AB)",))
-        dialog.set_comments("Media player for jamendo.com")
+        dialog.set_comments("""Jamaendo plays music from the music catalog of JAMENDO.
+
+JAMENDO is an online platform that distributes musical works under Creative Commons licenses.""")
         dialog.set_version('')
         dialog.run()
         dialog.destroy()
@@ -349,11 +323,19 @@ class Jamaui(object):
         webbrowser.open_new(url)
 
 
-    def on_refresh(self, button):
-        dialog = RefreshDialog()
-        dialog.show_all()
-        dialog.run()
-        dialog.hide()
+    #def on_refresh(self, button):
+    #    dialog = RefreshDialog()
+    #    dialog.show_all()
+    #    dialog.run()
+    #    dialog.hide()
+
+    def on_featured(self, button):
+        self.featuredwnd = FeaturedWindow()
+        self.featuredwnd.show_all()
+
+    def on_radios(self, button):
+        self.radiownd = RadioWindow()
+        self.radiownd.show_all()
 
     def on_search(self, button):
         self.searchwnd = SearchWindow()

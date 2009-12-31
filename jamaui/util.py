@@ -1,4 +1,5 @@
 import os
+import simplejson
 
 def string_in_file( filepath, string ):
     try:
@@ -19,3 +20,6 @@ def get_platform():
         return 'linux'
 
 platform = get_platform()
+
+def jsonprint(x):
+    print simplejson.dumps(x, sort_keys=True, indent=4)

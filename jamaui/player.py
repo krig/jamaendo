@@ -316,12 +316,14 @@ class Playlist(object):
             if isinstance(data, dict):
                 self.id = data['id']
                 self.name = data['name']
+                self.image = data['image']
                 self.numalbum = int(data['numalbum'])
                 self.url = data['mp3']
                 self.type = 'mp3'
             elif isinstance(data, basestring): # assume URI
                 self.id = 0
                 self.name = ''
+                self.image = None
                 self.numalbum = 0
                 self.url = data
                 self.type = 'mp3'
@@ -332,19 +334,30 @@ class Playlist(object):
         if items is None:
             items = []
         self.items = [Playlist.Entry(item) for item in items]
-        self.current = -1
+        self._current = -1
 
     def add(self, item):
         self.items.append(Playlist.Entry(item))
 
     def next(self):
         if self.has_next():
-            self.current = self.current + 1
-            return self.items[self.current]
+            self._current = self._current + 1
+            return self.items[self._current]
         return None
 
     def has_next(self):
-        return self.current < (len(self.items)-1)
+        return self._current < (len(self.items)-1)
+
+    def current(self):
+        if self._current >= 0:
+            return self.items[self._current]
+        return None
+
+    def current_index(self):
+        return self._current
+
+    def __len__(self):
+        return len(self.items)
 
 class Player(Playlist):
     def __init__(self):

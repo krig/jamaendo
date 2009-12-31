@@ -1,0 +1,103 @@
+#!/usr/bin/env python
+# runs tons of test queries against the API,
+# sleeping between each and printing the result
+
+# debugging hack - add . to path
+import os, sys
+local_module_dir = os.path.join(os.path.dirname(sys.argv[0]), '..')
+if os.path.isdir(local_module_dir):
+    sys.path.append(os.path.abspath(local_module_dir))
+
+import time
+
+import jamaendo.api2 as api2
+
+class Tests(object):
+    def XXXtestSearchArtists(self):
+        result = api2.search_artists('porn')
+        print "Result:", result
+        print "Cache:", api2._artists
+
+    def XXXtestSearchAlbums(self):
+        result = api2.search_albums('porn')
+        print "Result:", result
+        print "Cache:", api2._albums
+
+    def XXXtestSearchTracks(self):
+        result = api2.search_tracks('porn')
+        print "Result:", result
+        print "Cache:", api2._tracks
+
+    def XXXtestAlbumsOfTheWeek(self):
+        result = api2.albums_of_the_week()
+        print "Result:", result
+        print "Cache:", api2._albums
+
+    def XXXtestNewReleases(self):
+        result = api2.new_releases()
+        print "Result:", result
+        print "Cache:", api2._tracks
+
+    def XXXtestTracksOfTheWeek(self):
+        result = api2.tracks_of_the_week()
+        print "Result:", result
+        print "Cache:", api2._tracks
+
+    def XXXtestStarredRadios(self):
+        result = api2.starred_radios()
+        print "Result:", result
+
+    def XXXtestGetRadio283(self):
+        result = api2.get_radio(283)
+        print "Result:", result
+
+    def XXXtestGetArtist91(self):
+        result = api2.get_artist(91)
+        print "Result:", result
+
+    def XXXtestGetAlbum27865(self):
+        result = api2.get_album(27865)
+        print "Result:", result
+
+    def XXXtestGetTrack353341(self):
+        result = api2.get_track(353341)
+        print "Result:", result
+
+    def XXXtestGetTracks27865(self):
+        result = api2.get_tracks(27865)
+        print "Result:", result
+
+    def XXXtestGetAlbums91(self):
+        result = api2.get_albums(91)
+        print "Result:", result
+
+    def testGetAlbumCover27865(self):
+        result = api2.get_album_cover(27865)
+        print "Result:", result
+
+    def testGetAlbumCoverAsync27865(self):
+        self.got_cover = False
+        def gotit(cover):
+            print "Got:", cover
+            self.got_cover = True
+        api2.get_album_cover_async(gotit, 27865)
+        while not self.got_cover:
+            print "Waiting for cover..."
+            time.sleep(4)
+
+import traceback
+
+def main():
+    for name in Tests.__dict__.keys():
+        if name.startswith('test'):
+            print "Running %s" % (name)
+            try:
+                t = Tests()
+                getattr(t, name)()
+            except Exception, e:
+                traceback.print_exc()
+            print "Waiting..."
+            time.sleep(10)
+
+if __name__=="__main__":
+    main()

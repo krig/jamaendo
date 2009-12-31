@@ -3,6 +3,10 @@ _DUMP_URL = '''http://img.jamendo.com/data/dbdump_artistalbumtrack.xml.gz'''
 _DUMP = os.path.expanduser('''~/.cache/jamaendo/dbdump.xml.gz''')
 _DUMP_TMP = os.path.expanduser('''~/.cache/jamaendo/new_dbdump.xml.gz''')
 
+# radio stream
+# /get2/stream/track/m3u/radio_track_inradioplaylist/?order=numradio_asc&radio_id=283
+
+
 try:
     os.makedirs(os.path.dirname(_DUMP))
 except OSError:
@@ -246,6 +250,8 @@ class Query(object):
     def track_mp3(trackid):
        return _GET2+ 'stream/track/redirect/?id=%d&streamencoding=mp31'%(trackid)
 
+# http://www.jamendo.com/get2/id+name+idstr+image/radio/json?order=starred_desc
+#track_id/track/json/radio_track_inradioplaylist/?order=numradio_asc&radio_id=%i
 class Queries(object):
     @staticmethod
     def albums_this_week():
@@ -284,7 +290,15 @@ class Queries(object):
         return q.emit(order='searchweight_desc', query=query)
 
     @staticmethod
-    def album_tracks(albumids, select=['id', 'name', 'numalbum']):
+    def album_tracks(albumids, select=['id',
+                                       'name',
+                                       'numalbum',
+                                       'image',
+                                       'duration',
+                                       'album_name',
+                                       'album_id',
+                                       'artist_name',
+                                       'artist_id']):
         #http://api.jamendo.com/get2/id+name/track/jsonpretty/?album_id=33+46
         q = Query(select=select,
                   request='track')

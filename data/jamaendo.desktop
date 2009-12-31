@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=Jamaendo Media Player
+GenericName=Jamendo.com Free Music Player
+Comment=Streams music licensed under Creative Commons from jamendo.com
+Exec=jamaendo
+Icon=jamaendo
+Terminal=false
+Type=Application
+Categories=Audio;GTK;
+StartupWMClass=jamaendo
+StartupNotify=true
+X-Osso-Type=application/x-executable
+X-Osso-Service=org.jamaendo
+X-HildonDesk-ShowInToolbar=true
