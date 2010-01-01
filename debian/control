@@ -10,7 +10,7 @@ Homepage: http://github.com/krig/jamaendo/
 
 Package: jamaendo
 Architecture: all
-Depends: ${python:Depends}, python2.5-gtk2, python2.5-gstreamer, python2.5-dbus, python2.5-hildon, python2.5-gnome, python-lxml, python2.5-osso, gstreamer0.10-plugins-bad-faad, gstreamer0.10-plugins-ugly-mad, ogg-support
+Depends: ${python:Depends}, python2.5-gtk2, python2.5-gstreamer, python2.5-dbus, python2.5-hildon, python-lxml, python2.5-osso
 Description: 
 XB-Maemo-Display-Name: Jamaendo Player
 XB-Maemo-Icon-26:
