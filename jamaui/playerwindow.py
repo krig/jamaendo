@@ -22,6 +22,7 @@
 #  (based on http://pygstdocs.berlios.de/pygst-tutorial/seeking.html)
 #
 import gtk
+import gobject
 import hildon
 from settings import settings
 from postoffice import postoffice
@@ -49,6 +50,8 @@ class PlayerWindow(hildon.StackableWindow):
         self.playlist_pos = gtk.Label()
         self.track = gtk.Label()
         self.progress = hildon.GtkHScale()
+        self.progress.set_draw_value(False)
+        self.progress.set_range(0.0, 1.0)
         self.artist = gtk.Label()
         self.album = gtk.Label()
 
@@ -58,6 +61,8 @@ class PlayerWindow(hildon.StackableWindow):
             self.set_labels(track.name, track.artist_name, track.album_name, pl.current_index(), pl.size())
         else:
             self.set_labels('', '', '', 0, 0)
+
+        self._position_timer = None
 
         vbox2.pack_start(self.track, True)
         vbox2.pack_start(self.artist, False)
@@ -125,6 +130,28 @@ class PlayerWindow(hildon.StackableWindow):
         else:
             settings.volume = widget.get_level()/100.0
 
+    def on_position_timeout(self):
+        if the_player.playing():
+            self.set_position(*the_player.get_position_duration())
+        return True
+
+    def start_position_timer(self):
+        if self._position_timer is not None:
+            self.stop_position_timer()
+        self._position_timer = gobject.timeout_add(1000, self.on_position_timeout)
+
+    def stop_position_timer(self):
+        if self._position_timer is not None:
+            gobject.source_remove(self._position_timer)
+            self._position_timer = None
+
+    def clear_position(self):
+        self.progress.set_value(0)
+
+    def set_position(self, time_elapsed, total_time):
+        value = (float(time_elapsed) / float(total_time)) if total_time else 0
+        self.progress.set_value( value )
+
     def update_state(self):
         item = self.playlist.current()
         if item:
@@ -147,13 +174,17 @@ class PlayerWindow(hildon.StackableWindow):
 
     def play_tracks(self, tracks):
         self.playlist = Playlist(tracks)
+        self.clear_position()
+        self.start_position_timer()
         self.player.play(self.playlist)
         self.update_state()
 
     def on_play(self, button):
         self.player.play(self.playlist)
+        self.start_position_timer()
         self.update_state()
     def on_pause(self, button):
+        self.stop_position_timer()
         self.player.pause()
     def on_prev(self, button):
         self.player.prev()
@@ -162,6 +193,8 @@ class PlayerWindow(hildon.StackableWindow):
         self.player.next()
         self.update_state()
     def on_stop(self, button):
+        self.stop_position_timer()
+        self.clear_position()
         self.player.stop()
 
 def open_playerwindow(tracks=None):
