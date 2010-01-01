@@ -27,10 +27,21 @@ import jamaendo
 from settings import settings
 from player import Playlist, the_player
 
+_player_window = None
+
+def album_cover_receiver(albumid, size, cover):
+    if _player_window:
+        playing = _player_window.get_album_id()
+        if int(playing) == int(albumid):
+            _player_window.set_album_cover(cover)
+
 class PlayerWindow(hildon.StackableWindow):
     def __init__(self, playlist=None):
         hildon.StackableWindow.__init__(self)
         self.set_title("jamaendo")
+
+        global _player_window
+        _player_window = self
 
         self.connect('hide', self.on_hide)
         self.connect('destroy', self.on_destroy)
@@ -94,11 +105,18 @@ class PlayerWindow(hildon.StackableWindow):
 
         print "Created player window, playlist: %s" % (self.playlist)
 
+    def get_album_id(self):
+        if self.playlist and self.playlist.current_index() > -1:
+            return self.playlist.current().album_id
+        return None
+
     def on_hide(self, wnd):
         print "Hiding player window"
 
     def on_destroy(self, wnd):
         print "Destroying player window"
+        global _player_window
+        _player_window = None
         if self.player:
             self.player.stop()
 
@@ -133,9 +151,13 @@ class PlayerWindow(hildon.StackableWindow):
             print "current:", item
             self.set_labels(item.name, item.artist_name, item.album_name,
                             self.playlist.current_index(), self.playlist.size())
-            coverfile = jamaendo.get_album_cover(int(item.album_id), size=200)
-            print "coverfile:", coverfile
-            self.cover.set_from_file(coverfile)
+            jamaendo.get_album_cover_async(album_cover_receiver, int(item.album_id), size=200)
+            #coverfile = jamaendo.get_album_cover(int(item.album_id), size=200)
+            #print "coverfile:", coverfile
+            #self.cover.set_from_file(coverfile)
+
+    def set_album_cover(self, cover):
+        self.cover.set_from_file(cover)
 
     def play_tracks(self, tracks):
         self.playlist = Playlist(tracks)

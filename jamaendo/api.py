@@ -226,6 +226,45 @@ class Query(object):
     def execute(self):
         raise NotImplemented
 
+import threading
+
+class CoverFetcher(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.setDaemon(True)
+        self.cond = threading.Condition()
+        self.work = []
+
+    def _fetch_cover(self, albumid, size):
+        coverdir = _COVERDIR if _COVERDIR else '/tmp'
+        to = os.path.join(coverdir, '%d-%d.jpg'%(albumid, size))
+        if not os.path.isfile(to):
+            url = _GET2+'image/album/redirect/?id=%d&imagesize=%d'%(albumid, size)
+            urllib.urlretrieve(url, to)
+        return to
+
+    def request_cover(self, albumid, size, cb):
+        self.cond.acquire()
+        self.work.insert(0, (albumid, size, cb))
+        self.cond.notify()
+        self.cond.release()
+
+    def run(self):
+        while True:
+            work = []
+            self.cond.acquire()
+            while True:
+                work = self.work
+                if work:
+                    self.work = []
+                    break
+                self.cond.wait()
+            self.cond.release()
+
+            for albumid, size, cb in work:
+                cover = self._fetch_cover(albumid, size)
+                cb(albumid, size, cover)
+
 class CoverCache(object):
     """
     cache and fetch covers
@@ -243,6 +282,8 @@ class CoverCache(object):
                 m = covermatch.match(fil)
                 if m and os.path.isfile(fl):
                     self._covers[(int(m.group(1)), int(m.group(2)))] = fl
+        self._fetcher = CoverFetcher()
+        self._fetcher.start()
 
     def fetch_cover(self, albumid, size):
         coverdir = _COVERDIR if _COVERDIR else '/tmp'
@@ -264,9 +305,7 @@ class CoverCache(object):
         if cover:
             cb(cover)
         else:
-            # TODO
-            cover = self.fetch_cover(albumid, size)
-            cb(cover)
+            self._fetcher.request_cover(albumid, size, cb)
 
 _cover_cache = CoverCache()
 

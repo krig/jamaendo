@@ -28,11 +28,23 @@ from playerwindow import open_playerwindow
 from settings import settings
 import util
 
+_instance = None
+
+def album_cover_receiver(albumid, size, cover):
+    if _instance:
+        playing = _instance.get_album_id()
+        if int(playing) == int(albumid):
+            _instance.set_album_cover(cover)
+
 class ShowAlbum(hildon.StackableWindow):
     def __init__(self, album):
         hildon.StackableWindow.__init__(self)
         self.set_title("Album")
         self.album = album
+
+        global _instance
+        _instance = self
+        self.connect('destroy', self.on_destroy)
 
         top_vbox = gtk.VBox()
         top_hbox = gtk.HBox()
@@ -92,10 +104,15 @@ class ShowAlbum(hildon.StackableWindow):
 
         self.add(top_vbox)
 
+        # here it's probably ok to get the cover synchronously..
         coverfile = jamaendo.get_album_cover(self.album.ID, size=200)
         self.cover.set_from_file(coverfile)
 
         self.show_all()
+
+    def on_destroy(self, wnd):
+        global _instance
+        _instance = None
 
     def make_imagebutton(self, name, cb):
         btn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
