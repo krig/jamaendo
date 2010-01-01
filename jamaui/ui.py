@@ -3,12 +3,15 @@ import gtk
 import gobject
 import util
 import logging
+from settings import settings
 
 import ossohelper
 
 gobject.threads_init()
 
 log = logging.getLogger(__name__)
+
+VERSION = '1'
 
 try:
     import hildon
@@ -24,72 +27,25 @@ from dbus.mainloop.glib import DBusGMainLoop
 
 DBusGMainLoop(set_as_default=True)
 
+import jamaendo
+
 from playerwindow import open_playerwindow
 from search import SearchWindow
-
-class ArtistWindow(hildon.StackableWindow):
-    def __init__(self):
-        hildon.StackableWindow.__init__(self)
-        self.set_title("View Artist")
-
-        label = gtk.Label("Artist information")
-        vbox = gtk.VBox(False, 0)
-        vbox.pack_start(label, True, True, 0)
-        self.add(vbox)
-
-class AlbumWindow(hildon.StackableWindow):
-    def __init__(self):
-        hildon.StackableWindow.__init__(self)
-        self.set_title("View Album")
-
-        label = gtk.Label("Album information")
-        vbox = gtk.VBox(False, 0)
-        vbox.pack_start(label, True, True, 0)
-        self.add(vbox)
-
-class RadiosWindow(hildon.StackableWindow):
-    def __init__(self):
-        hildon.StackableWindow.__init__(self)
-        self.set_title("Radios")
-
-        label = gtk.Label("Radios")
-        vbox = gtk.VBox(False, 0)
-        vbox.pack_start(label, True, True, 0)
-        self.add(vbox)
-
-class FeaturedWindow(hildon.StackableWindow):
-    def __init__(self):
-        hildon.StackableWindow.__init__(self)
-        self.set_title("Featured")
-
-        label = gtk.Label("featured")
-        vbox = gtk.VBox(False, 0)
-        vbox.pack_start(label, True, True, 0)
-        self.add(vbox)
+from featured import FeaturedWindow
+from radios import RadiosWindow
+from favorites import FavoritesWindow
 
 class PlaylistsWindow(hildon.StackableWindow):
     def __init__(self):
         hildon.StackableWindow.__init__(self)
         self.set_title("Playlists")
 
-        label = gtk.Label("playlists")
-        vbox = gtk.VBox(False, 0)
-        vbox.pack_start(label, True, True, 0)
-        self.add(vbox)
-
-class FavoritesWindow(hildon.StackableWindow):
-    def __init__(self):
-        hildon.StackableWindow.__init__(self)
-        self.set_title("Favorites")
-
-        label = gtk.Label("favorites")
+        label = gtk.Label("Playlists")
         vbox = gtk.VBox(False, 0)
         vbox.pack_start(label, True, True, 0)
         self.add(vbox)
 
 class Jamaui(object):
-    _BG = 'bg.png' # /opt/jamaendo/data/bg.png
-
     def __init__(self):
         self.app = None
         self.menu = None
@@ -102,6 +58,14 @@ class Jamaui(object):
 
         self.window.set_title("jamaendo")
         self.window.connect("destroy", self.destroy)
+
+        self.CONFDIR = os.path.expanduser('~/MyDocs/.jamaendo')
+        jamaendo.set_cache_dir(self.CONFDIR)
+        settings.set_filename(os.path.join(self.CONFDIR, 'ui_settings'))
+        settings.load()
+
+    def save_settings(self):
+        settings.save()
 
     def create_menu(self):
         self.menu = hildon.AppMenu()
@@ -121,10 +85,16 @@ class Jamaui(object):
         player.connect("clicked", self.on_favorites)
         self.menu.append(player)
 
+        #player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        #player.set_label("Playlists")
+        #player.connect("clicked", self.on_playlists)
+        #self.menu.append(player)
+
         player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
-        player.set_label("Playlists")
-        player.connect("clicked", self.on_playlists)
+        player.set_label("Settings")
+        player.connect("clicked", self.on_settings)
         self.menu.append(player)
+
 
         # Don't use localdb ATM
         #refresh = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
@@ -141,18 +111,9 @@ class Jamaui(object):
         self.menu.show_all()
         self.window.set_app_menu(self.menu)
 
-    def find_resource(self, name):
-        if os.path.isfile(os.path.join('data', name)):
-            return os.path.join('data', name)
-        elif os.path.isfile(os.path.join('/opt/jaemendo', name)):
-            return os.path.join('/opt/jaemendo', name)
-        elif os.path.isfile(os.path.join('/usr/share/jaemendo', name)):
-            return os.path.join('/usr/share/jaemendo', name)
-        else:
-            return None
 
     def setup_widgets(self):
-        bgimg = self.find_resource(self._BG)
+        bgimg = util.find_resource('bg.png')
         if bgimg:
             background, mask = gtk.gdk.pixbuf_new_from_file(bgimg).render_pixmap_and_mask()
             self.window.realize()
@@ -179,22 +140,45 @@ class Jamaui(object):
         btn.connect('clicked', callback)
         self.bbox.add(btn)
 
+    #def add_featured_button(self):
+    #    self.featured_sel = hildon.TouchSelector(text=True)
+    #    self.featured_sel.append_text("Albums of the week")
+    #    self.featured_sel.append_text("Tracks of the week")
+    #    self.featured_sel.append_text("New releases")
+    #    btn = hildon.PickerButton(gtk.HILDON_SIZE_THUMB_HEIGHT,
+    #                              hildon.BUTTON_ARRANGEMENT_VERTICAL)
+    #    btn.set_text("Featured", "Most listened to")
+    #    btn.set_property('width-request', 225)
+    #    btn.set_selector(self.featured_sel)
+    #    self.featured_btn = btn
+    #    self.bbox.add(btn)
+
     def destroy(self, widget):
         gtk.main_quit()
 
     def show_about(self, w, win):
         dialog = gtk.AboutDialog()
+        dialog.set_program_name("jamaendo")
         dialog.set_website("http://github.com/krig")
         dialog.set_website_label("http://github.com/krig")
-        dialog.set_authors(("Kristoffer Gronlund (Purple Scout AB)",))
+        dialog.set_version(VERSION)
+        dialog.set_authors(("Kristoffer Gronlund <kristoffer.gronlund@purplescout.se>",))
         dialog.set_comments("""Jamaendo plays music from the music catalog of JAMENDO.
 
 JAMENDO is an online platform that distributes musical works under Creative Commons licenses.""")
-        dialog.set_version('')
+        gtk.about_dialog_set_email_hook(self.open_link, dialog)
+        gtk.about_dialog_set_url_hook(self.open_link, dialog)
+        dialog.connect( 'response', lambda dlg, response: dlg.destroy())
+        for parent in dialog.vbox.get_children():
+            for child in parent.get_children():
+                if isinstance(child, gtk.Label):
+                    child.set_selectable(False)
+                    child.set_alignment(0.0, 0.5)
         dialog.run()
         dialog.destroy()
 
     def open_link(self, d, url, data):
+        print "url: %s" % (url)
         import webbrowser
         webbrowser.open_new(url)
 
@@ -206,8 +190,17 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
     #    dialog.hide()
 
     def on_featured(self, button):
-        self.featuredwnd = FeaturedWindow()
-        self.featuredwnd.show_all()
+        dialog = hildon.PickerDialog(self.window)
+        sel = hildon.TouchSelector(text=True)
+        for feature, _ in FeaturedWindow.features:
+            sel.append_text(feature)
+        dialog.set_selector(sel)
+        dialog.set_title("Featured")
+        if dialog.run() == gtk.RESPONSE_OK:
+            txt = sel.get_current_text()
+            self.featuredwnd = FeaturedWindow(txt)
+            self.featuredwnd.show_all()
+        dialog.destroy()
 
     def on_radios(self, button):
         self.radioswnd = RadiosWindow()
@@ -220,6 +213,30 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
     def on_playlists(self, button):
         self.playlistswnd = PlaylistsWindow()
         self.playlistswnd.show_all()
+
+    def on_settings(self, button):
+        dialog = gtk.Dialog()
+        dialog.set_title("Settings")
+        dialog.add_button( gtk.STOCK_OK, gtk.RESPONSE_OK )
+        vbox = dialog.vbox
+        tbl = gtk.Table(1, 2)
+        tbl.attach(gtk.Label("Username:"), 0, 1, 0, 1)
+        entry = hildon.Entry(gtk.HILDON_SIZE_FINGER_HEIGHT)
+        entry.set_placeholder("jamendo.com username")
+        if settings.user:
+            entry.set_text(settings.user)
+        tbl.attach(entry, 1, 2, 0, 1)
+        vbox.pack_start(tbl, True, True, 2)
+        dialog.show_all()
+        result = dialog.run()
+        val = entry.get_text()
+        dialog.destroy()
+        print val, result
+        if val and result == gtk.RESPONSE_OK:
+            print "new user name:", val
+            settings.user = val
+            self.save_settings()
+
 
     def on_favorites(self, button):
         self.favoriteswnd = FavoritesWindow()

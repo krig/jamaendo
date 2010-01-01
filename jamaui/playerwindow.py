@@ -1,6 +1,7 @@
 import gtk
 import hildon
 import jamaendo
+from settings import settings
 from player import Playlist, the_player
 
 class PlayerWindow(hildon.StackableWindow):
@@ -35,7 +36,7 @@ class PlayerWindow(hildon.StackableWindow):
             track = pl.current()
             self.set_labels(track.name, track.artist_name, track.album_name, pl.current_index(), pl.size())
         else:
-            self.set_labels('track name', 'artist', 'album', 0, 0)
+            self.set_labels('', '', '', 0, 0)
 
         vbox2.pack_start(self.track, True)
         vbox2.pack_start(self.artist, False)
@@ -59,6 +60,13 @@ class PlayerWindow(hildon.StackableWindow):
         self.add_stock_button(btns, gtk.STOCK_MEDIA_STOP, self.on_stop)
         self.add_stock_button(btns, gtk.STOCK_MEDIA_NEXT, self.on_next)
 
+        self.volume = hildon.VVolumebar()
+        self.volume.set_property('can-focus', False)
+        self.volume.connect('level_changed', self.volume_changed_hildon)
+        self.volume.connect('mute_toggled', self.mute_toggled)
+        #self.__gui_root.main_window.connect( 'key-press-event',
+        #                                     self.on_key_press )
+        hbox.pack_start(self.volume, False)
         self.add(vbox)
 
         print "Created player window, playlist: %s" % (self.playlist)
@@ -83,6 +91,16 @@ class PlayerWindow(hildon.StackableWindow):
         self.track.set_markup('<span size="x-large">%s</span>'%(track))
         self.artist.set_markup('<span size="large">%s</span>'%(artist))
         self.album.set_markup('<span foreground="#aaaaaa">%s</span>'%(album))
+
+
+    def volume_changed_hildon(self, widget):
+        settings.volume = widget.get_level()/100.0
+
+    def mute_toggled(self, widget):
+        if widget.get_mute():
+            settings.volume = 0
+        else:
+            settings.volume = widget.get_level()/100.0
 
     def update_state(self):
         item = self.playlist.current()
@@ -115,7 +133,7 @@ class PlayerWindow(hildon.StackableWindow):
     def on_stop(self, button):
         self.player.stop()
 
-def open_playerwindow(tracks):
+def open_playerwindow(tracks=None):
     player = PlayerWindow(tracks)
     player.show_all()
     return player

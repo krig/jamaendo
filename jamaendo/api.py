@@ -35,7 +35,7 @@ def set_cache_dir(cachedir):
 # makes a query internally to get the full story
 
 _ARTIST_FIELDS = ['id', 'name', 'image']
-_ALBUM_FIELDS = ['id', 'name', 'image', 'artist_name', 'artist_id']
+_ALBUM_FIELDS = ['id', 'name', 'image', 'artist_name', 'artist_id', 'license_url']
 _TRACK_FIELDS = ['id', 'name', 'image', 'artist_name', 'album_name', 'album_id', 'numalbum', 'duration']
 _RADIO_FIELDS = ['id', 'name', 'idstr', 'image']
 
@@ -109,15 +109,16 @@ class Album(LazyQuery):
         self.image = None
         self.artist_name = None
         self.artist_id = None
+        self.license_url = None
         self.tracks = None # None means not downloaded
         if json:
             self.set_from_json(json)
 
     def _needs_load(self):
-        return self._needs_load_impl('name', 'image', 'artist_name', 'artist_id', 'tracks')
+        return self._needs_load_impl('name', 'image', 'artist_name', 'artist_id', 'license_url', 'tracks')
 
     def _set_from(self, other):
-        return self._set_from_impl(other, 'name', 'image', 'artist_name', 'artist_id', 'tracks')
+        return self._set_from_impl(other, 'name', 'image', 'artist_name', 'artist_id', 'license_url', 'tracks')
 
 class Track(LazyQuery):
     def __init__(self, ID, json=None):
@@ -175,7 +176,7 @@ _CACHED_RADIOS = 10
 # TODO: cache queries?
 
 class Query(object):
-    rate_limit = 1.0 # max queries per second
+    rate_limit = 1.1 # seconds between queries
     last_query = time.time() - 1.5
 
     @classmethod
@@ -221,7 +222,6 @@ class CoverCache(object):
                     self._covers[(int(m.group(1)), int(m.group(2)))] = fl
 
     def fetch_cover(self, albumid, size):
-        Query._ratelimit() # ratelimit cover fetching too?
         coverdir = _COVERDIR if _COVERDIR else '/tmp'
         to = os.path.join(coverdir, '%d-%d.jpg'%(albumid, size))
         if not os.path.isfile(to):
@@ -362,7 +362,7 @@ class SearchQuery(GetQuery):
 
 class JamendoAPIException(Exception):
     def __init__(self, url):
-        Exception.__init__(url)
+        Exception.__init__(self, url)
 
 def _update_cache(cache, new_items):
     if not isinstance(new_items, list):

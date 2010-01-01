@@ -23,3 +23,14 @@ platform = get_platform()
 
 def jsonprint(x):
     print simplejson.dumps(x, sort_keys=True, indent=4)
+
+def find_resource(name):
+    if os.path.isfile(os.path.join('data', name)):
+        return os.path.join('data', name)
+    elif os.path.isfile(os.path.join('/opt/jaemendo', name)):
+        return os.path.join('/opt/jaemendo', name)
+    elif os.path.isfile(os.path.join('/usr/share/jaemendo', name)):
+        return os.path.join('/usr/share/jaemendo', name)
+    else:
+        return None
+

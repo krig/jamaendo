@@ -24,9 +24,9 @@ pygst.require('0.10')
 import gst
 import util
 import dbus
-import dbus.service
 
 import jamaendo
+from settings import settings
 
 log = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class GStreamer(_Player):
         self.filesrc = None
         self.filesrc_property = None
         self.volume_control = None
-        self.volume_multiplier = 1
+        self.volume_multiplier = 1.
         self.volume_property = None
         self.eos_callback = lambda: self.stop()
 
@@ -71,31 +71,25 @@ class GStreamer(_Player):
             self.player = None
             return False
 
-        log.debug("Setting up for %s : %s", filetype, uri)
-
-        # On maemo use software decoding to workaround some bugs their gst:
-        # 1. Weird volume bugs in playbin when playing ogg or wma files
-        # 2. When seeking the DSPs sometimes lie about the real position info
-        if True:
-            self._maemo_setup_playbin_player(uri)
-        elif util.platform == 'maemo':
-            if not self._maemo_setup_hardware_player(filetype):
-                self._maemo_setup_software_player()
-                log.debug( 'Using software decoding (maemo)' )
+        _first = False
+        if self.player is None:
+            _first = True
+            if False:
+                self._maemo_setup_playbin2_player(uri)
+                log.debug('Using playbin2 (maemo)')
+            elif util.platform == 'maemo':
+                self._maemo_setup_playbin_player()
+                log.debug('Using playbin (maemo)')
             else:
-                log.debug( 'Using hardware decoding (maemo)' )
-        else:
-            # This is for *ahem* "normal" versions of gstreamer
-            self._setup_playbin_player()
-            log.debug( 'Using playbin (non-maemo)' )
+                self._setup_playbin_player()
+                log.debug( 'Using playbin (non-maemo)' )
+
+            bus = self.player.get_bus()
+            bus.add_signal_watch()
+            bus.connect('message', self._on_message)
+            self._set_volume_level(settings.volume)
 
         self._set_uri_to_be_played(uri)
-
-        bus = self.player.get_bus()
-        bus.add_signal_watch()
-        bus.connect('message', self._on_message)
-
-        self._set_volume_level( 1 )
 
         self.play()
         return True
@@ -105,6 +99,15 @@ class GStreamer(_Player):
             state = self.player.get_state()[1]
             return self.STATES.get(state, 'none')
         return 'none'
+
+    def _get_position_duration(self):
+        try:
+            pos_int = self.player.query_position(self.time_format, None)[0]
+            dur_int = self.player.query_duration(self.time_format, None)[0]
+        except Exception, e:
+            log.exception('Error getting position')
+            pos_int = dur_int = 0
+        return pos_int, dur_int
 
     def playing(self):
         return self.get_state() == 'playing'
@@ -123,7 +126,7 @@ class GStreamer(_Player):
             self.player.set_state(gst.STATE_NULL)
             self.player = None
 
-    def _maemo_setup_playbin_player(self, url):
+    def _maemo_setup_playbin2_player(self, url):
         self.player = gst.parse_launch("playbin2 uri=%s" % (url,))
         self.filesrc = self.player
         self.filesrc_property = 'uri'
@@ -131,56 +134,14 @@ class GStreamer(_Player):
         self.volume_multiplier = 1.
         self.volume_property = 'volume'
 
-    def _maemo_setup_hardware_player( self, filetype ):
-        """ Setup a hardware player for mp3 or aac audio using
-        dspaacsink or dspmp3sink """
-
-        if filetype in [ 'mp3', 'aac', 'mp4', 'm4a' ]:
-            self.player = gst.element_factory_make('playbin', 'player')
-            self.filesrc = self.player
-            self.filesrc_property = 'uri'
-            self.volume_control = self.player
-            self.volume_multiplier = 10.
-            self.volume_property = 'volume'
-            return True
-        else:
-            return False
-
-    def _maemo_setup_software_player( self ):
-        """
-        Setup a software decoding player for maemo, this is the only choice
-        for decoding wma and ogg or if audio is to be piped to a bluetooth
-        headset (this is because the audio must first be decoded only to be
-        re-encoded using sbcenc.
-        """
-
-        self.player = gst.Pipeline('player')
-        src = gst.element_factory_make('gnomevfssrc', 'src')
-        decoder = gst.element_factory_make('decodebin', 'decoder')
-        convert = gst.element_factory_make('audioconvert', 'convert')
-        resample = gst.element_factory_make('audioresample', 'resample')
-        sink = gst.element_factory_make('dsppcmsink', 'sink')
-
-        self.filesrc = src # pointer to the main source element
-        self.filesrc_property = 'location'
-        self.volume_control = sink
-        self.volume_multiplier = 1
-        self.volume_property = 'fvolume'
-
-        # Add the various elements to the player pipeline
-        self.player.add( src, decoder, convert, resample, sink )
-
-        # Link what can be linked now, the decoder->convert happens later
-        gst.element_link_many( src, decoder )
-        gst.element_link_many( convert, resample, sink )
-
-        # We can't link the two halves of the pipeline until it comes
-        # time to start playing, this singal lets us know when it's time.
-        # This is because the output from decoder can't be determined until
-        # decoder knows what it's decoding.
-        decoder.connect('pad-added',
-                        self._on_decoder_pad_added,
-                        convert.get_pad('sink') )
+    def _maemo_setup_playbin_player( self):
+        self.player = gst.element_factory_make('playbin2', 'player')
+        self.filesrc = self.player
+        self.filesrc_property = 'uri'
+        self.volume_control = self.player
+        self.volume_multiplier = 1.
+        self.volume_property = 'volume'
+        return True
 
     def _setup_playbin_player( self ):
         """ This is for situations where we have a normal (read: non-maemo)
@@ -205,7 +166,7 @@ class GStreamer(_Player):
         assert  0 <= value <= 1
 
         if self.volume_control is not None:
-            vol = value * self.volume_multiplier
+            vol = value * float(self.volume_multiplier)
             self.volume_control.set_property( self.volume_property, vol )
 
     def _set_uri_to_be_played(self, uri):
@@ -217,17 +178,16 @@ class GStreamer(_Player):
         t = message.type
 
         if t == gst.MESSAGE_EOS:
-            self.eos_callback()
             log.info("End of stream")
+            self.eos_callback()
         elif t == gst.MESSAGE_STATE_CHANGED:
-            old, new, pending = message.parse_state_changed()
-            log.info("State changed: %s -> %s -> %s", old, new, pending)
+            if (message.src == self.player and
+                message.structure['new-state'] == gst.STATE_PLAYING):
+                log.info("State changed to playing")
         elif t == gst.MESSAGE_ERROR:
             err, debug = message.parse_error()
             log.critical( 'Error: %s %s', err, debug )
             self.stop()
-        else:
-            log.info("? %s", message.type)
 
     def set_eos_callback(self, cb):
         self.eos_callback = cb
@@ -361,13 +321,12 @@ class Playlist(object):
         return self._current
 
     def size(self):
-        print type(self)
         return len(self.items)
 
     def __repr__(self):
-        return "Playlist(%s)"%(", ".join([str(item) for item in self.items]))
+        return "Playlist(%s)"%(", ".join([str(item.ID) for item in self.items]))
 
-class Player(Playlist):
+class Player(object):
     def __init__(self):
         self.backend = PlayerBackend()
         self.backend.set_eos_callback(self._on_eos)
