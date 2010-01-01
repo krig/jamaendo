@@ -45,6 +45,9 @@ class ShowAlbum(hildon.StackableWindow):
         top_hbox = gtk.HBox()
         vbox1 = gtk.VBox()
         self.cover = gtk.Image()
+        tmp = util.find_resource('album.png')
+        if tmp:
+            self.cover.set_from_file(tmp)
         self.bbox = gtk.HButtonBox()
         self.bbox.set_property('layout-style', gtk.BUTTONBOX_SPREAD)
         self.goto_artist = self.make_imagebutton('artist', self.on_goto_artist)
@@ -82,13 +85,13 @@ class ShowAlbum(hildon.StackableWindow):
 
         self.add(top_hbox)
 
-        postoffice.connect('album-cover', self.on_album_cover)
+        postoffice.connect('album-cover', self, self.on_album_cover)
         postoffice.notify('request-album-cover', self.album.ID, 300)
 
         self.show_all()
 
     def on_destroy(self, wnd):
-        postoffice.disconnect('album-cover', self.on_album_cover)
+        postoffice.disconnect('album-cover', self)
 
     def on_album_cover(self, albumid, size, cover):
         if albumid == self.album.ID and size == 300:

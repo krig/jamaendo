@@ -66,12 +66,12 @@ class GStreamer(_Player):
         self.volume_multiplier = 1.
         self.volume_property = None
         self.eos_callback = lambda: self.stop()
-        postoffice.connect('settings-changed', self.on_settings_changed)
+        postoffice.connect('settings-changed', self, self.on_settings_changed)
 
     def on_settings_changed(self, key, value):
         if key == 'volume':
             self._set_volume_level(value)
-        #postoffice.disconnect(self.on_settings_changed)
+        #postoffice.disconnect(self)
 
 
     def play_url(self, filetype, uri):
@@ -108,7 +108,7 @@ class GStreamer(_Player):
             return self.STATES.get(state, 'none')
         return 'none'
 
-    def _get_position_duration(self):
+    def get_position_duration(self):
         try:
             pos_int = self.player.query_position(self.time_format, None)[0]
             dur_int = self.player.query_duration(self.time_format, None)[0]
@@ -129,10 +129,11 @@ class GStreamer(_Player):
         if self.player:
             self.player.set_state(gst.STATE_PAUSED)
 
-    def stop(self):
+    def stop(self, reset = True):
         if self.player:
             self.player.set_state(gst.STATE_NULL)
-            self.player = None
+            if reset:
+                self.player = None
 
     def _maemo_setup_playbin2_player(self, url):
         self.player = gst.parse_launch("playbin2 uri=%s" % (url,))
@@ -341,16 +342,23 @@ class Player(object):
         self.backend.set_eos_callback(self._on_eos)
         self.playlist = Playlist()
 
+    def get_position_duration(self):
+        return self.backend.get_position_duration()
+
     def play(self, playlist = None):
         if playlist:
             self.playlist = playlist
         elif self.playlist is None:
             self.playlist = Playlist()
         if self.playlist.size():
-            if self.playlist.has_next():
-                entry = self.playlist.next()
-                log.debug("playing %s", entry)
+            if self.playlist.current():
+                entry = self.playlist.current()
                 self.backend.play_url('mp3', entry.mp3_url())
+                log.debug("playing %s", entry)
+            elif self.playlist.has_next():
+                entry = self.playlist.next()
+                self.backend.play_url('mp3', entry.mp3_url())
+                log.debug("playing %s", entry)
 
     def pause(self):
         self.backend.pause()
@@ -363,16 +371,19 @@ class Player(object):
 
     def next(self):
         if self.playlist.has_next():
-            self.stop()
-            self.play()
+            self.backend.stop(reset=False)
+            entry = self.playlist.next()
+            self.backend.play_url('mp3', entry.mp3_url())
+            log.debug("playing %s", entry)
         else:
             self.stop()
 
     def prev(self):
         if self.playlist.has_prev():
+            self.backend.stop(reset=False)
             entry = self.playlist.prev()
-            log.debug("playing %s", entry)
             self.backend.play_url('mp3', entry.mp3_url())
+            log.debug("playing %s", entry)
 
     def _on_eos(self):
         log.debug("EOS!")

@@ -32,7 +32,7 @@ import os
 import sys
 
 data_files = [
-    ('share/jamaendo', glob('data/icon_*.png') + ['data/bg.png']),
+    ('share/jamaendo', glob('data/icon_*.png') + ['data/bg.png', 'data/album.png']),
     ('share/applications/hildon', ['data/jamaendo.desktop']),
     ('share/icons/hicolor/26x26/apps', ['data/26x26/jamaendo.png']),
     ('share/icons/hicolor/40x40/apps', ['data/40x40/jamaendo.png']),

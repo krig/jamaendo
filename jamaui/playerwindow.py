@@ -32,14 +32,14 @@ import logging
 log = logging.getLogger(__name__)
 
 class PlayerWindow(hildon.StackableWindow):
-    def __init__(self, playlist=None):
+    def __init__(self):
         hildon.StackableWindow.__init__(self)
         self.set_title("jamaendo")
 
         self.connect('destroy', self.on_destroy)
 
-        self.playlist = Playlist(playlist)
         self.player = the_player
+        self.playlist = the_player.playlist
 
         vbox = gtk.VBox()
 
@@ -58,12 +58,7 @@ class PlayerWindow(hildon.StackableWindow):
         self.artist = gtk.Label()
         self.album = gtk.Label()
 
-        if self.player.playlist.current_index() > -1:
-            pl = self.player.playlist
-            track = pl.current()
-            self.set_labels(track.name, track.artist_name, track.album_name, pl.current_index(), pl.size())
-        else:
-            self.set_labels('', '', '', 0, 0)
+        self.set_labels('', '', '', 0, 0)
 
         self._position_timer = None
 
@@ -84,8 +79,7 @@ class PlayerWindow(hildon.StackableWindow):
         vbox.pack_end(btns, False, True, 0)
 
         self.add_stock_button(btns, gtk.STOCK_MEDIA_PREVIOUS, self.on_prev)
-        self.add_stock_button(btns, gtk.STOCK_MEDIA_PLAY, self.on_play)
-        self.add_stock_button(btns, gtk.STOCK_MEDIA_PAUSE, self.on_pause)
+        self.add_play_button(btns)
         self.add_stock_button(btns, gtk.STOCK_MEDIA_STOP, self.on_stop)
         self.add_stock_button(btns, gtk.STOCK_MEDIA_NEXT, self.on_next)
 
@@ -98,9 +92,12 @@ class PlayerWindow(hildon.StackableWindow):
         hbox.pack_start(self.volume, False)
         self.add(vbox)
 
-        postoffice.connect('album-cover', self.set_album_cover)
+        postoffice.connect('album-cover', self, self.set_album_cover)
 
         #print "Created player window, playlist: %s" % (self.playlist)
+
+        self.update_state()
+        self.update_play_button()
 
     def get_album_id(self):
         if self.playlist and self.playlist.current_index() > -1:
@@ -108,14 +105,40 @@ class PlayerWindow(hildon.StackableWindow):
         return None
 
     def on_destroy(self, wnd):
-        postoffice.disconnect('album-cover', self.set_album_cover)
+        self.stop_position_timer()
+        postoffice.disconnect('album-cover', self)
 
     def add_stock_button(self, btns, stock, cb):
         btn = hildon.GtkButton(gtk.HILDON_SIZE_FINGER_HEIGHT)
         btn.set_relief(gtk.RELIEF_NONE)
-        btn.set_image(gtk.image_new_from_stock(stock, gtk.ICON_SIZE_SMALL_TOOLBAR))
+        sz = gtk.ICON_SIZE_BUTTON
+        btn.set_image(gtk.image_new_from_stock(stock, sz))
         btn.connect('clicked', cb)
         btns.add(btn)
+
+    def add_play_button(self, btns):
+        sz = gtk.ICON_SIZE_BUTTON
+        self.playimg = gtk.image_new_from_stock(gtk.STOCK_MEDIA_PLAY, sz)
+        self.pauseimg = gtk.image_new_from_stock(gtk.STOCK_MEDIA_PAUSE, sz)
+        btn = hildon.GtkButton(gtk.HILDON_SIZE_FINGER_HEIGHT)
+        btn.set_relief(gtk.RELIEF_NONE)
+        if self.player.playing():
+            btn.set_image(self.pauseimg)
+            btn.set_data('state', 'pause')
+        else:
+            btn.set_image(self.playimg)
+            btn.set_data('state', 'play')
+        btn.connect('clicked', self.on_play)
+        btns.add(btn)
+        self.playbtn = btn
+
+    def update_play_button(self):
+        if self.player.playing():
+            self.playbtn.set_image(self.pauseimg)
+            self.playbtn.set_data('state', 'pause')
+        else:
+            self.playbtn.set_image(self.playimg)
+            self.playbtn.set_data('state', 'play')
 
     def set_labels(self, track, artist, album, playlist_pos, playlist_size):
         self.playlist_pos.set_markup('<span size="small">%s/%s songs</span>'%(playlist_pos, playlist_size))
@@ -178,19 +201,25 @@ class PlayerWindow(hildon.StackableWindow):
                 self.cover.set_from_file(cover)
 
     def play_tracks(self, tracks):
-        self.playlist = Playlist(tracks)
+        self.stop_position_timer()
         self.clear_position()
-        self.start_position_timer()
+        self.playlist = Playlist(tracks)
+        self.player.stop()
         self.player.play(self.playlist)
         self.update_state()
+        self.update_play_button()
 
     def on_play(self, button):
-        self.player.play(self.playlist)
-        self.start_position_timer()
-        self.update_state()
-    def on_pause(self, button):
-        self.stop_position_timer()
-        self.player.pause()
+        if not self.player.playing():
+            self.player.play(self.playlist)
+            self.start_position_timer()
+            self.update_state()
+            self.update_play_button()
+        else:
+            self.stop_position_timer()
+            self.player.pause()
+            self.update_state()
+            self.update_play_button()
     def on_prev(self, button):
         self.player.prev()
         self.update_state()
@@ -201,8 +230,9 @@ class PlayerWindow(hildon.StackableWindow):
         self.stop_position_timer()
         self.clear_position()
         self.player.stop()
+        self.update_play_button()
 
-def open_playerwindow(tracks=None):
-    player = PlayerWindow(tracks)
+def open_playerwindow():
+    player = PlayerWindow()
     player.show_all()
     return player

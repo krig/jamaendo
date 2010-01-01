@@ -94,7 +94,7 @@ class Jamaui(object):
         settings.set_filename(os.path.join(self.CONFDIR, 'ui_settings'))
         settings.load()
 
-        postoffice.connect('request-album-cover', self.on_request_cover)
+        postoffice.connect('request-album-cover', self, self.on_request_cover)
         log.debug("Created main window.")
 
     def save_settings(self):
@@ -193,7 +193,7 @@ class Jamaui(object):
     #    self.bbox.add(btn)
 
     def destroy(self, widget):
-        postoffice.disconnect('request-album-cover', self.on_request_cover)
+        postoffice.disconnect('request-album-cover', self)
         gtk.main_quit()
 
     def show_about(self, w, win):
@@ -309,7 +309,7 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
         self.favoriteswnd.show_all()
 
     def on_player(self, button):
-        open_playerwindow([])
+        open_playerwindow()
 
     '''
     def on_search(self, button):

@@ -35,26 +35,24 @@ class PostOffice(object):
     def notify(self, tag, *data):
         clients = self.tags.get(tag)
         if clients:
-            log.debug("(%s %s) -> [%s]",
-                      tag,
-                      " ".join(str(x) for x in data),
-                      " ".join(str(x) for x in clients))
-            for client in clients:
+            #log.debug("(%s %s) -> [%s]",
+            #          tag,
+            #          " ".join(str(x) for x in data),
+            #          " ".join(repr(x) for x,_ in clients))
+            for ref, client in clients:
                 client(*data)
 
-    def connect(self, tag, callback):
+    def connect(self, tag, ref, callback):
         if tag not in self.tags:
             self.tags[tag] = []
         clients = self.tags[tag]
         if callback not in clients:
-            clients.append(callback)
+            clients.append((ref, callback))
 
-    def disconnect(self, tag, callback):
+    def disconnect(self, tag, ref):
         if tag not in self.tags:
             self.tags[tag] = []
-        clients = self.tags[tag]
-        if callback in clients:
-            clients.remove(callback)
+        self.tags[tag] = [(_ref, cb) for _ref, cb in self.tags[tag] if _ref != ref]
 
 postoffice = PostOffice()
 
