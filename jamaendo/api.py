@@ -106,8 +106,8 @@ class LazyQuery(object):
             return u"%s(%s)"%(self.__class__.__name__,
                               u", ".join(repr(v) for k,v in self.__dict__.iteritems() if not k.startswith('_')))
         except UnicodeEncodeError:
-            import traceback
-            traceback.print_exc()
+            #import traceback
+            #traceback.print_exc()
             return u"%s(?)"%(self.__class__.__name__)
 
 class Artist(LazyQuery):
@@ -217,7 +217,7 @@ class Query(object):
         pass
 
     def _geturl(self, url):
-        print "*** %s" % (url)
+        #print "*** %s" % (url)
         Query._ratelimit()
         f = urllib.urlopen(url)
         ret = simplejson.load(f)

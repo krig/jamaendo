@@ -117,7 +117,7 @@ enter your username</span>
     def row_activated(self, treeview, path, view_column):
         _id = self.results.get_album_id(path)
         item = self.idmap[_id]
-        print _id, item
+        #print _id, item
         self.open_item(item)
 
     def open_item(self, item):

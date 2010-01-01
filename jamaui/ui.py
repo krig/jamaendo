@@ -85,6 +85,7 @@ class Jamaui(object):
         self.app.add_window(self.window)
 
         self.window.set_title("jamaendo")
+        self.window.set_icon('jamaendo')
         self.window.connect("destroy", self.destroy)
 
         self.CONFDIR = os.path.expanduser('~/MyDocs/.jamaendo')
@@ -241,7 +242,7 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
         dialog.destroy()
 
     def open_link(self, d, url, data):
-        print "url: %s" % (url)
+        #print "url: %s" % (url)
         import webbrowser
         webbrowser.open_new(url)
 
@@ -294,9 +295,9 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
         result = dialog.run()
         val = entry.get_text()
         dialog.destroy()
-        print val, result
+        #print val, result
         if val and result == gtk.RESPONSE_OK:
-            print "new user name:", val
+            #print "new user name:", val
             settings.user = val
             self.save_settings()
 

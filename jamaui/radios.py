@@ -84,7 +84,7 @@ class RadiosWindow(hildon.StackableWindow):
         treeiter = self.result_store.get_iter(path)
         title, _id = self.result_store.get(treeiter, 0, 1)
         item = self.radios[_id]
-        print _id, item
+        #print _id, item
         self.open_item(item)
 
     def open_item(self, item):

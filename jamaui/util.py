@@ -44,8 +44,8 @@ def get_platform():
 
 platform = get_platform()
 
-def jsonprint(x):
-    print simplejson.dumps(x, sort_keys=True, indent=4)
+#def jsonprint(x):
+#    print simplejson.dumps(x, sort_keys=True, indent=4)
 
 def find_resource(name):
     if os.path.isfile(os.path.join('data', name)):

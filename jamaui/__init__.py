@@ -23,5 +23,11 @@
 #
 
 import logging
+import sys
 
-logging.basicConfig(level=logging.DEBUG, format="%(name)-15s: [%(lineno)4d] %(levelname)-8s %(message)s")
+#logging.basicConfig(level=logging.DEBUG, format="%(name)-15s: [%(lineno)4d] %(levelname)-8s %(message)s")
+
+LOG_FILENAME = '/tmp/jamaendo.log'
+
+logging.basicConfig(filename=LOG_FILENAME,level=logging.DEBUG, format="%(name)-15s: [%(lineno)4d] %(levelname)-8s %(message)s")
+sys.excepthook = lambda *args: logger.critical('Exception:', exc_info=args)

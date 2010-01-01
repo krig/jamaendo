@@ -97,7 +97,7 @@ class PlayerWindow(hildon.StackableWindow):
 
         postoffice.connect('album-cover', self.set_album_cover)
 
-        print "Created player window, playlist: %s" % (self.playlist)
+        #print "Created player window, playlist: %s" % (self.playlist)
 
     def get_album_id(self):
         if self.playlist and self.playlist.current_index() > -1:
@@ -157,7 +157,7 @@ class PlayerWindow(hildon.StackableWindow):
         if item:
             if not item.name:
                 item.load()
-            print "current:", item
+            #print "current:", item
             self.set_labels(item.name, item.artist_name, item.album_name,
                             self.playlist.current_index(), self.playlist.size())
             postoffice.notify('request-album-cover', int(item.album_id), 300)
