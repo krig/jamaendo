@@ -35,7 +35,7 @@ class Settings(object):
         }
 
     def __init__(self):
-        self.__savename = "/tmp/jaemendo_uisettings"
+        self.__savename = "/tmp/jamaendo_uisettings"
         for k,v in self.defaults.iteritems():
             setattr(self, k, v)
 

@@ -50,10 +50,10 @@ def jsonprint(x):
 def find_resource(name):
     if os.path.isfile(os.path.join('data', name)):
         return os.path.join('data', name)
-    elif os.path.isfile(os.path.join('/opt/jaemendo', name)):
-        return os.path.join('/opt/jaemendo', name)
-    elif os.path.isfile(os.path.join('/usr/share/jaemendo', name)):
-        return os.path.join('/usr/share/jaemendo', name)
+    elif os.path.isfile(os.path.join('/opt/jamaendo', name)):
+        return os.path.join('/opt/jamaendo', name)
+    elif os.path.isfile(os.path.join('/usr/share/jamaendo', name)):
+        return os.path.join('/usr/share/jamaendo', name)
     else:
         return None
 
