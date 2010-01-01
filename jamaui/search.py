@@ -88,8 +88,8 @@ class SearchWindow(hildon.StackableWindow):
         self.idmap = {}
 
     def mode_changed(self, selector, user_data):
-        current_selection = selector.get_current_text()
-        print current_selection
+        pass
+        #current_selection = selector.get_current_text()
 
     def on_search(self, w):
         mode = self.mode.get_active()
@@ -115,7 +115,7 @@ class SearchWindow(hildon.StackableWindow):
         treeiter = self.result_store.get_iter(path)
         title, _id = self.result_store.get(treeiter, 0, 1)
         item = self.idmap[_id]
-        print _id, item
+        #print _id, item
         self.open_item(item)
 
     def open_item(self, item):

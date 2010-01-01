@@ -26,27 +26,22 @@ import hildon
 import jamaendo
 from playerwindow import open_playerwindow
 from settings import settings
+from postoffice import postoffice
 import util
+import logging
+from albumlist import TrackList
+import webbrowser
 
-_instance = None
-
-def album_cover_receiver(albumid, size, cover):
-    if _instance:
-        playing = _instance.get_album_id()
-        if int(playing) == int(albumid):
-            _instance.set_album_cover(cover)
+log = logging.getLogger(__name__)
 
 class ShowAlbum(hildon.StackableWindow):
     def __init__(self, album):
         hildon.StackableWindow.__init__(self)
-        self.set_title("Album")
+        self.set_title(album.artist_name)
         self.album = album
 
-        global _instance
-        _instance = self
         self.connect('destroy', self.on_destroy)
 
-        top_vbox = gtk.VBox()
         top_hbox = gtk.HBox()
         vbox1 = gtk.VBox()
         self.cover = gtk.Image()
@@ -62,33 +57,16 @@ class ShowAlbum(hildon.StackableWindow):
         self.playbtn.connect('clicked', self.on_play)
 
         vbox2 = gtk.VBox()
-        self.albumtitle = gtk.Label()
-        self.albumtitle.set_markup('<big>%s</big>' % (album.name))
-        self.artist = gtk.Label()
-        self.artist.set_markup('<span color="#cccccc">%s</span>'%(album.artist_name))
+        self.albumname = gtk.Label()
+        self.albumname.set_markup('<big>%s</big>'%(album.name))
         self.trackarea = hildon.PannableArea()
 
-        self.album_store = gtk.ListStore(int, str, int)
-        self.album_view = gtk.TreeView(self.album_store)
-        col0 = gtk.TreeViewColumn('Num')
-        col = gtk.TreeViewColumn('Name')
-        self.album_view.append_column(col0)
-        self.album_view.append_column(col)
-        cell0 = gtk.CellRendererText()
-        col0.pack_start(cell0, True)
-        col0.add_attribute(cell0, 'text', 0)
-        cell = gtk.CellRendererText()
-        col.pack_start(cell, True)
-        col.add_attribute(cell, 'text', 1)
-        self.album_view.set_search_column(1)
-        col.set_sort_column_id(0)
-        self.album_view.connect('row-activated', self.row_activated)
+        self.tracks = TrackList(numbers=True)
+        self.tracks.connect('row-activated', self.row_activated)
 
         for track in jamaendo.get_tracks(album.ID):
-            self.album_store.append([track.numalbum, track.name, track.ID])
+            self.tracks.add_track(track)
 
-        top_vbox.pack_start(self.albumtitle, False)
-        top_vbox.pack_start(top_hbox)
         top_hbox.pack_start(vbox1, False)
         top_hbox.pack_start(vbox2, True)
         vbox1.pack_start(self.cover, True)
@@ -98,21 +76,23 @@ class ShowAlbum(hildon.StackableWindow):
         self.bbox.add(self.download)
         self.bbox.add(self.favorite)
         self.bbox.add(self.license)
-        vbox2.pack_start(self.artist, False)
+        vbox2.pack_start(self.albumname, False)
         vbox2.pack_start(self.trackarea, True)
-        self.trackarea.add(self.album_view)
+        self.trackarea.add(self.tracks)
 
-        self.add(top_vbox)
+        self.add(top_hbox)
 
-        # here it's probably ok to get the cover synchronously..
-        coverfile = jamaendo.get_album_cover(self.album.ID, size=200)
-        self.cover.set_from_file(coverfile)
+        postoffice.connect('album-cover', self.on_album_cover)
+        postoffice.notify('request-album-cover', self.album.ID, 300)
 
         self.show_all()
 
     def on_destroy(self, wnd):
-        global _instance
-        _instance = None
+        postoffice.disconnect('album-cover', self.on_album_cover)
+
+    def on_album_cover(self, albumid, size, cover):
+        if albumid == self.album.ID and size == 300:
+            self.cover.set_from_file(cover)
 
     def make_imagebutton(self, name, cb):
         btn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
@@ -131,8 +111,10 @@ class ShowAlbum(hildon.StackableWindow):
         self.open_item(artist)
 
     def on_download(self, btn):
-        banner = hildon.hildon_banner_show_information(self, '', "Downloads disabled in this version")
+        banner = hildon.hildon_banner_show_information(self, '', "Opening in web browser")
         banner.set_timeout(2000)
+        url = self.album.torrent_url()
+        webbrowser.open_new(url)
 
     def on_favorite(self, btn):
         settings.favorite(self.album)
@@ -141,15 +123,17 @@ class ShowAlbum(hildon.StackableWindow):
 
 
     def on_license(self, btn):
+        banner = hildon.hildon_banner_show_information(self, '', "Opening in web browser")
+        banner.set_timeout(2000)
         url = self.album.license_url
-        import webbrowser
         webbrowser.open_new(url)
 
     def on_play(self, btn):
         self.open_item(self.album)
 
     def row_activated(self, treeview, path, view_column):
-        pass
+        _id = self.tracks.get_track_id(path)
+        log.debug("clicked %s", _id)
 
     def open_item(self, item):
         if isinstance(item, jamaendo.Album):

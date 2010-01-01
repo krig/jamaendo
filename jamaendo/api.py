@@ -35,7 +35,7 @@ _COVERDIR = None
 _GET2 = '''http://api.jamendo.com/get2/'''
 _MP3URL = _GET2+'stream/track/redirect/?id=%d&streamencoding=mp31'
 _OGGURL = _GET2+'stream/track/redirect/?id=%d&streamencoding=ogg2'
-
+_TORRENTURL = _GET2+'bittorrent/file/redirect/?album_id=%d&type=archive&class=mp32'
 
 def set_cache_dir(cachedir):
     global _CACHEDIR
@@ -136,6 +136,10 @@ class Album(LazyQuery):
         self.tracks = None # None means not downloaded
         if json:
             self.set_from_json(json)
+
+    def torrent_url(self):
+        return _TORRENTURL%(self.ID)
+
 
     def _needs_load(self):
         return self._needs_load_impl('name', 'image', 'artist_name', 'artist_id', 'license_url', 'tracks')
@@ -261,9 +265,12 @@ class CoverFetcher(threading.Thread):
                 self.cond.wait()
             self.cond.release()
 
+            multi = len(work) > 1
             for albumid, size, cb in work:
                 cover = self._fetch_cover(albumid, size)
                 cb(albumid, size, cover)
+                if multi:
+                    time.sleep(1.0)
 
 class CoverCache(object):
     """
@@ -303,16 +310,16 @@ class CoverCache(object):
     def get_async(self, albumid, size, cb):
         cover = self._covers.get((albumid, size), None)
         if cover:
-            cb(cover)
+            cb(albumid, size, cover)
         else:
             self._fetcher.request_cover(albumid, size, cb)
 
 _cover_cache = CoverCache()
 
-def get_album_cover(albumid, size=200):
+def get_album_cover(albumid, size=100):
     return _cover_cache.get_cover(albumid, size)
 
-def get_album_cover_async(cb, albumid, size=200):
+def get_album_cover_async(cb, albumid, size=100):
     _cover_cache.get_async(albumid, size, cb)
 
 class CustomQuery(Query):

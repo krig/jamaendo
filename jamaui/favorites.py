@@ -30,6 +30,8 @@ from showalbum import ShowAlbum
 from settings import settings
 import logging
 
+from albumlist import AlbumList
+
 log = logging.getLogger(__name__)
 
 def _alist(l, match):
@@ -46,43 +48,33 @@ class FavoritesWindow(hildon.StackableWindow):
         if settings.user:
             # Results list
             self.panarea = hildon.PannableArea()
-            self.result_store = gtk.ListStore(str, int)
-            #self.result_store.append(['red'])
-            self.result_view = gtk.TreeView(self.result_store)
-            col = gtk.TreeViewColumn('Name')
-            self.result_view.append_column(col)
-            cell = gtk.CellRendererText()
-            col.pack_start(cell, True)
-            col.add_attribute(cell, 'text', 0)
-            self.result_view.set_search_column(0)
-            col.set_sort_column_id(0)
-            self.result_view.connect('row-activated', self.row_activated)
-
-            self.panarea.add(self.result_view)
+            self.results = AlbumList()
+            self.results.connect('row-activated', self.row_activated)
+            self.panarea.add(self.results)
 
             self.idmap = {}
+
+            def add_album(ID, album_factory):
+                if ID not in self.idmap:
+                    album = album_factory()
+                    self.idmap[ID] = album
+                    self.results.add_album(album)
+
             try:
                 for item in jamaendo.favorite_albums(settings.user):
-                    self.idmap[item.ID] = item
-                    self.result_store.append([self.get_item_text(item), item.ID])
+                    add_album(item.ID, lambda: item)
             except jamaendo.JamendoAPIException, e:
                 msg = "Query failed, is the user name '%s' correct?" % (settings.user)
                 banner = hildon.hildon_banner_show_information(self, '',
                                                                msg)
                 banner.set_timeout(3000)
 
-
-            def add_album(albumid):
-                album = jamaendo.get_album(albumid)
-                self.idmap[albumid] = album
-                self.result_store.append([self.get_item_text(album), albumid])
-
             for item in settings.favorites:
                 try:
                     if isinstance(item, tuple) and len(item) == 2:
                         ftype, fid = item
                         if ftype == 'album':
-                            add_album(fid)
+                            add_album(fid, lambda: jamaendo.get_album(fid))
 
                 except jamaendo.JamendoAPIException, e:
                     log.exception("jamaendo.get_album(%s)"%(fid))
@@ -123,8 +115,7 @@ enter your username</span>
         return button
 
     def row_activated(self, treeview, path, view_column):
-        treeiter = self.result_store.get_iter(path)
-        title, _id = self.result_store.get(treeiter, 0, 1)
+        _id = self.results.get_album_id(path)
         item = self.idmap[_id]
         print _id, item
         self.open_item(item)

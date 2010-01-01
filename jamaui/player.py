@@ -27,6 +27,7 @@ import dbus
 
 import jamaendo
 from settings import settings
+from postoffice import postoffice
 
 log = logging.getLogger(__name__)
 
@@ -65,6 +66,13 @@ class GStreamer(_Player):
         self.volume_multiplier = 1.
         self.volume_property = None
         self.eos_callback = lambda: self.stop()
+        postoffice.connect('settings-changed', self.on_settings_changed)
+
+    def on_settings_changed(self, key, value):
+        if key == 'volume':
+            self._set_volume_level(value)
+        #postoffice.disconnect(self.on_settings_changed)
+
 
     def play_url(self, filetype, uri):
         if None in (filetype, uri):

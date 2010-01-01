@@ -25,42 +25,30 @@ import gtk
 import hildon
 import jamaendo
 from playerwindow import open_playerwindow
+from albumlist import AlbumList
 
 class ShowArtist(hildon.StackableWindow):
     def __init__(self, artist):
         hildon.StackableWindow.__init__(self)
-        self.set_title("Artist")
+        self.set_title(artist.name)
         self.artist = artist
 
         self.panarea = hildon.PannableArea()
         vbox = gtk.VBox(False, 0)
 
-        name = gtk.Label()
-        name.set_markup('<big>%s</big>'%(artist.name))
-        vbox.pack_start(name, False)
+        self.albums = AlbumList()
+        self.albums.show_artist(False)
+        self.albums.connect('row-activated', self.row_activated)
 
-        self.album_store = gtk.ListStore(str, int)
-        self.album_view = gtk.TreeView(self.album_store)
-        col = gtk.TreeViewColumn('Name')
-        self.album_view.append_column(col)
-        cell = gtk.CellRendererText()
-        col.pack_start(cell, True)
-        col.add_attribute(cell, 'text', 0)
-        self.album_view.set_search_column(0)
-        col.set_sort_column_id(0)
-        self.album_view.connect('row-activated', self.row_activated)
-
-
-        self.panarea.add(self.album_view)
+        self.panarea.add(self.albums)
         vbox.pack_start(self.panarea, True, True, 0)
         self.add(vbox)
 
         for album in jamaendo.get_albums(artist.ID):
-            self.album_store.append([album.name, album.ID])
+            self.albums.add_album(album)
 
     def row_activated(self, treeview, path, view_column):
-        treeiter = self.album_store.get_iter(path)
-        title, _id = self.album_store.get(treeiter, 0, 1)
+        _id = self.albums.get_album_id(path)
         album = jamaendo.get_album(_id)
         if isinstance(album, list):
             album = album[0]

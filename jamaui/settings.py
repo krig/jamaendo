@@ -24,6 +24,8 @@
 import cPickle, os
 import logging
 
+from postoffice import postoffice
+
 VERSION = 1
 log = logging.getLogger(__name__)
 
@@ -38,6 +40,11 @@ class Settings(object):
         self.__savename = "/tmp/jamaendo_uisettings"
         for k,v in self.defaults.iteritems():
             setattr(self, k, v)
+
+    def __setattr__(self, key, value):
+        object.__setattr__(self, key, value)
+        if key in self.defaults.keys():
+            postoffice.notify('settings-changed', key, value)
 
     def set_filename(self, savename):
         self.__savename = savename

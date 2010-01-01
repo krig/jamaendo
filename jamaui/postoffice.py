@@ -23,35 +23,38 @@
 #
 # message central
 
+import logging
+
+log = logging.getLogger(__name__)
+
 class PostOffice(object):
-    class Client(object):
-        def __init__(self):
-            self.tags = {}
-        def has_tag(self, tag):
-            return tag in self.tags
-        def notify(self, tags, data):
-            for tag in tags:
-                cb = self.tags.get(tag)
-                if cb:
-                    cb(data)
-        def register(self, tag, callback):
-            self.tags[tag] = callback
 
     def __init__(self):
-        self.clients = {}
+        self.tags = {} # tag -> [callback]
 
-    def notify(self, tags, data):
-        if not isinstance(tags, list):
-            tags = [tags]
-        for client in clients:
-            client.notify(tags, data)
+    def notify(self, tag, *data):
+        clients = self.tags.get(tag)
+        if clients:
+            log.debug("(%s %s) -> [%s]",
+                      tag,
+                      " ".join(str(x) for x in data),
+                      " ".join(str(x) for x in clients))
+            for client in clients:
+                client(*data)
 
-    def register(self, client_id, tag, callback):
-        client = self.clients.get(client_id)
-        if not client:
-            client = Client()
-            self.clients[client_id] = client
-        client.register(tag, callback)
+    def connect(self, tag, callback):
+        if tag not in self.tags:
+            self.tags[tag] = []
+        clients = self.tags[tag]
+        if callback not in clients:
+            clients.append(callback)
+
+    def disconnect(self, tag, callback):
+        if tag not in self.tags:
+            self.tags[tag] = []
+        clients = self.tags[tag]
+        if callback in clients:
+            clients.remove(callback)
 
 postoffice = PostOffice()
 

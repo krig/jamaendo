@@ -56,6 +56,7 @@ DBusGMainLoop(set_as_default=True)
 
 import jamaendo
 
+from postoffice import postoffice
 from playerwindow import open_playerwindow
 from search import SearchWindow
 from featured import FeaturedWindow
@@ -90,6 +91,8 @@ class Jamaui(object):
         jamaendo.set_cache_dir(self.CONFDIR)
         settings.set_filename(os.path.join(self.CONFDIR, 'ui_settings'))
         settings.load()
+
+        postoffice.connect('request-album-cover', self.on_request_cover)
 
     def save_settings(self):
         settings.save()
@@ -167,6 +170,12 @@ class Jamaui(object):
         btn.connect('clicked', callback)
         self.bbox.add(btn)
 
+    def on_request_cover(self, albumid, size):
+        jamaendo.get_album_cover_async(self.got_album_cover, int(albumid), size)
+
+    def got_album_cover(self, albumid, size, cover):
+        postoffice.notify('album-cover', albumid, size, cover)
+
     #def add_featured_button(self):
     #    self.featured_sel = hildon.TouchSelector(text=True)
     #    self.featured_sel.append_text("Albums of the week")
@@ -181,6 +190,7 @@ class Jamaui(object):
     #    self.bbox.add(btn)
 
     def destroy(self, widget):
+        postoffice.disconnect('request-album-cover', self.on_request_cover)
         gtk.main_quit()
 
     def show_about(self, w, win):
