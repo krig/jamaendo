@@ -219,9 +219,12 @@ class Query(object):
     def _geturl(self, url):
         #print "*** %s" % (url)
         Query._ratelimit()
-        f = urllib.urlopen(url)
-        ret = simplejson.load(f)
-        f.close()
+        try:
+            f = urllib.urlopen(url)
+            ret = simplejson.load(f)
+            f.close()
+        except Exception, e:
+            return None
         return ret
 
     def __str__(self):
@@ -240,12 +243,15 @@ class CoverFetcher(threading.Thread):
         self.work = []
 
     def _fetch_cover(self, albumid, size):
-        coverdir = _COVERDIR if _COVERDIR else '/tmp'
-        to = os.path.join(coverdir, '%d-%d.jpg'%(albumid, size))
-        if not os.path.isfile(to):
-            url = _GET2+'image/album/redirect/?id=%d&imagesize=%d'%(albumid, size)
-            urllib.urlretrieve(url, to)
-        return to
+        try:
+            coverdir = _COVERDIR if _COVERDIR else '/tmp'
+            to = os.path.join(coverdir, '%d-%d.jpg'%(albumid, size))
+            if not os.path.isfile(to):
+                url = _GET2+'image/album/redirect/?id=%d&imagesize=%d'%(albumid, size)
+                urllib.urlretrieve(url, to)
+            return to
+        except Exception, e:
+            return None
 
     def request_cover(self, albumid, size, cb):
         self.cond.acquire()
@@ -268,9 +274,10 @@ class CoverFetcher(threading.Thread):
             multi = len(work) > 1
             for albumid, size, cb in work:
                 cover = self._fetch_cover(albumid, size)
-                cb(albumid, size, cover)
-                if multi:
-                    time.sleep(1.0)
+                if cover:
+                    cb(albumid, size, cover)
+                    if multi:
+                        time.sleep(1.0)
 
 class CoverCache(object):
     """

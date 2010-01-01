@@ -88,7 +88,21 @@ class ShowAlbum(hildon.StackableWindow):
         postoffice.connect('album-cover', self, self.on_album_cover)
         postoffice.notify('request-album-cover', self.album.ID, 300)
 
+        self.create_menu()
+
         self.show_all()
+
+    def create_menu(self):
+        def on_player():
+            from playerwindow import open_playerwindow
+            open_playerwindow()
+        self.menu = hildon.AppMenu()
+        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        player.set_label("Open player")
+        player.connect("clicked", on_player)
+        self.menu.append(player)
+        self.menu.show_all()
+        self.set_app_menu(self.menu)
 
     def on_destroy(self, wnd):
         postoffice.disconnect('album-cover', self)

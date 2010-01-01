@@ -32,6 +32,7 @@ class SearchWindow(hildon.StackableWindow):
     def __init__(self):
         hildon.StackableWindow.__init__(self)
         self.set_title("Search")
+        self.idmap = {}
 
         vbox = gtk.VBox(False, 0)
 
@@ -81,11 +82,21 @@ class SearchWindow(hildon.StackableWindow):
         hbox.pack_start(self.entry, True, True, 0)
         hbox.pack_start(btn, False)
         vbox.pack_start(hbox, False)
-
-
         self.add(vbox)
 
-        self.idmap = {}
+        self.create_menu()
+
+    def create_menu(self):
+        def on_player():
+            from playerwindow import open_playerwindow
+            open_playerwindow()
+        self.menu = hildon.AppMenu()
+        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        player.set_label("Open player")
+        player.connect("clicked", on_player)
+        self.menu.append(player)
+        self.menu.show_all()
+        self.set_app_menu(self.menu)
 
     def mode_changed(self, selector, user_data):
         pass

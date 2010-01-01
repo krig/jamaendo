@@ -108,10 +108,10 @@ class Jamaui(object):
         #search.connect("clicked", self.on_search)
         #self.menu.append(search)
 
-        #player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
-        #player.set_label("Open player")
-        #player.connect("clicked", self.on_player)
-        #self.menu.append(player)
+        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        player.set_label("Open player")
+        player.connect("clicked", self.on_player)
+        self.menu.append(player)
 
         player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
         player.set_label("Favorites")
@@ -194,6 +194,7 @@ class Jamaui(object):
 
     def destroy(self, widget):
         postoffice.disconnect('request-album-cover', self)
+        self.save_settings()
         gtk.main_quit()
 
     def show_about(self, w, win):

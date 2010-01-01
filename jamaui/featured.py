@@ -69,6 +69,20 @@ class FeaturedWindow(hildon.StackableWindow):
 
         self.add(self.panarea)
 
+        self.create_menu()
+
+    def create_menu(self):
+        def on_player():
+            from playerwindow import open_playerwindow
+            open_playerwindow()
+        self.menu = hildon.AppMenu()
+        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        player.set_label("Open player")
+        player.connect("clicked", on_player)
+        self.menu.append(player)
+        self.menu.show_all()
+        self.set_app_menu(self.menu)
+
     def get_item_text(self, item):
         if isinstance(item, jamaendo.Album):
             return "%s - %s" % (item.artist_name, item.name)
