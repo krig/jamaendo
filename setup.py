@@ -38,22 +38,27 @@ if running_on_tablet:
     applications_dir += '/hildon'
 
 data_files = [
-    ('share/jamaendo', glob('data/*.png')),
+    ('share/jamaendo', glob('data/icon_*.png') + ['data/bg.png']),
     (applications_dir, ['data/jamaendo.desktop']),
     ('share/icons/hicolor/scalable/apps', ['data/jamaendo.png']),
 ]
 
+# search for translations and repare to install
+#translation_files = []
+#for mofile in glob('data/locale/*/LC_MESSAGES/jamaendo.mo'):
+#    modir = os.path.dirname(mofile).replace('data', 'share')
+#    translation_files.append((modir, [mofile]))
+
 import sys
 setup(
     name = "jamaendo",
-    version = "0.0.1",
+    version = '0.1',
     author = "Kristoffer Gronlund",
     author_email = "kristoffer.gronlund@purplescout.se",
     url = "http://github.com/krig/jamaendo",
-    packages = find_packages(exclude=['tests']),
+    packages = ['jamaendo', 'jamaui'],
     zip_safe=False,
-    test_suite='tests.test_suite',
     scripts = ['scripts/jamaendo'],
-    data_files = data_files
+    data_files = data_files# + translation_files,
     )
 

@@ -1,0 +1,6 @@
+?package(jamaendo):\
+  needs="X11"\
+  section="Apps/Sound"\
+  title="Jamaendo Player"\
+  command="jamaendo"\
+  icon=/usr/share/jamaendo/jamaendo.png

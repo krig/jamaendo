@@ -38,7 +38,7 @@ gobject.threads_init()
 
 log = logging.getLogger(__name__)
 
-VERSION = '1'
+VERSION = '0.1'
 
 try:
     import hildon
