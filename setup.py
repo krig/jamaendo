@@ -31,15 +31,9 @@ from glob import glob
 import os
 import sys
 
-running_on_tablet = os.path.exists('/etc/osso_software_version')
-
-applications_dir = 'share/applications'
-if running_on_tablet:
-    applications_dir += '/hildon'
-
 data_files = [
     ('share/jamaendo', glob('data/icon_*.png') + ['data/bg.png']),
-    (applications_dir, ['data/jamaendo.desktop']),
+    ('share/applications/hildon', ['data/jamaendo.desktop']),
     ('share/icons/hicolor/scalable/apps', ['data/jamaendo.png']),
 ]
 
