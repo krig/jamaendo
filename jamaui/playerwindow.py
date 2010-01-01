@@ -27,6 +27,9 @@ import hildon
 from settings import settings
 from postoffice import postoffice
 from player import Playlist, the_player
+import logging
+
+log = logging.getLogger(__name__)
 
 class PlayerWindow(hildon.StackableWindow):
     def __init__(self, playlist=None):
@@ -132,7 +135,9 @@ class PlayerWindow(hildon.StackableWindow):
 
     def on_position_timeout(self):
         if the_player.playing():
-            self.set_position(*the_player.get_position_duration())
+            self.set_song_position(*the_player.get_position_duration())
+        else:
+            log.debug("position timeout, but not playing")
         return True
 
     def start_position_timer(self):
@@ -148,7 +153,7 @@ class PlayerWindow(hildon.StackableWindow):
     def clear_position(self):
         self.progress.set_value(0)
 
-    def set_position(self, time_elapsed, total_time):
+    def set_song_position(self, time_elapsed, total_time):
         value = (float(time_elapsed) / float(total_time)) if total_time else 0
         self.progress.set_value( value )
 

@@ -80,12 +80,13 @@ class Jamaui(object):
         self.window = None
 
     def create_window(self):
+        log.debug("Creating main window...")
         self.app = hildon.Program()
         self.window = hildon.StackableWindow()
         self.app.add_window(self.window)
 
         self.window.set_title("jamaendo")
-        self.window.set_icon('jamaendo')
+
         self.window.connect("destroy", self.destroy)
 
         self.CONFDIR = os.path.expanduser('~/MyDocs/.jamaendo')
@@ -94,6 +95,7 @@ class Jamaui(object):
         settings.load()
 
         postoffice.connect('request-album-cover', self.on_request_cover)
+        log.debug("Created main window.")
 
     def save_settings(self):
         settings.save()

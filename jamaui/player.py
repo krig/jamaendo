@@ -175,6 +175,7 @@ class GStreamer(_Player):
 
         if self.volume_control is not None:
             vol = value * float(self.volume_multiplier)
+            log.debug("Setting volume to %s", vol)
             self.volume_control.set_property( self.volume_property, vol )
 
     def _set_uri_to_be_played(self, uri):
