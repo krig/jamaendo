@@ -1,3 +1,30 @@
+#!/usr/bin/env python
+#
+# This file is part of Jamaendo.
+# Copyright (c) 2010 Kristoffer Gronlund
+#
+# Jamaendo is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Jamaendo is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Jamaendo.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Player code heavily based on http://thpinfo.com/2008/panucci/:
+#  A resuming media player for Podcasts and Audiobooks
+#  Copyright (c) 2008-05-26 Thomas Perl <thpinfo.com>
+#  (based on http://pygstdocs.berlios.de/pygst-tutorial/seeking.html)
+#
+# Jamaendo jamendo.com API wrapper licensed under the New BSD License;
+# see module for details.
+#
+
 import os, sys
 import gtk
 import gobject
@@ -75,10 +102,10 @@ class Jamaui(object):
         #search.connect("clicked", self.on_search)
         #self.menu.append(search)
 
-        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
-        player.set_label("Open player")
-        player.connect("clicked", self.on_player)
-        self.menu.append(player)
+        #player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        #player.set_label("Open player")
+        #player.connect("clicked", self.on_player)
+        #self.menu.append(player)
 
         player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
         player.set_label("Favorites")
@@ -162,7 +189,10 @@ class Jamaui(object):
         dialog.set_website("http://github.com/krig")
         dialog.set_website_label("http://github.com/krig")
         dialog.set_version(VERSION)
-        dialog.set_authors(("Kristoffer Gronlund <kristoffer.gronlund@purplescout.se>",))
+        dialog.set_license("GNU GPL v3")
+        dialog.set_authors(("Kristoffer Gronlund <kristoffer.gronlund@purplescout.se>",
+                            "Based on Panucci and gPodder, by",
+                            "Thomas Perl <thpinfo.com>"))
         dialog.set_comments("""Jamaendo plays music from the music catalog of JAMENDO.
 
 JAMENDO is an online platform that distributes musical works under Creative Commons licenses.""")
