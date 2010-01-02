@@ -122,7 +122,6 @@ class GStreamer(_Player):
 
     def play(self):
         if self.player:
-            log.debug("playing")
             self.player.set_state(gst.STATE_PLAYING)
 
     def pause(self):
@@ -183,17 +182,18 @@ class GStreamer(_Player):
         # Sets the right property depending on the platform of self.filesrc
         if self.player is not None:
             self.filesrc.set_property(self.filesrc_property, uri)
+            log.info("%s", uri)
 
     def _on_message(self, bus, message):
         t = message.type
 
         if t == gst.MESSAGE_EOS:
-            log.info("End of stream")
+            log.debug("Gstreamer: End of stream")
             self.eos_callback()
         elif t == gst.MESSAGE_STATE_CHANGED:
             if (message.src == self.player and
                 message.structure['new-state'] == gst.STATE_PLAYING):
-                log.info("State changed to playing")
+                log.debug("gstreamer: state -> playing")
         elif t == gst.MESSAGE_ERROR:
             err, debug = message.parse_error()
             log.critical( 'Error: %s %s', err, debug )
@@ -289,6 +289,9 @@ PlayerBackend = GStreamer
 
 class Playlist(object):
     def __init__(self, items = []):
+        self.radio_mode = False
+        self.radio_id = None
+        self.radio_name = None
         if items is None:
             items = []
         for item in items:
@@ -327,6 +330,11 @@ class Playlist(object):
             return self.items[self._current]
         return None
 
+    def jump_to(self, item_id):
+        for c, i in enumerate(self.items):
+            if i.ID == item_id:
+                self._current = c
+
     def current_index(self):
         return self._current
 
@@ -334,13 +342,14 @@ class Playlist(object):
         return len(self.items)
 
     def __repr__(self):
-        return "Playlist(%s)"%(", ".join([str(item.ID) for item in self.items]))
+        return "Playlist(%d of %s)"%(self._current, ", ".join([str(item.ID) for item in self.items]))
 
 class Player(object):
     def __init__(self):
         self.backend = PlayerBackend()
         self.backend.set_eos_callback(self._on_eos)
         self.playlist = Playlist()
+        self.__in_end_notify = False # ugly...
 
     def get_position_duration(self):
         return self.backend.get_position_duration()
@@ -379,8 +388,15 @@ class Player(object):
             self.backend.play_url('mp3', entry.mp3_url())
             log.debug("playing %s", entry)
             postoffice.notify('next', entry)
-        else:
-            self.stop()
+        elif not self.__in_end_notify:
+            self.__in_end_notify = True
+            postoffice.notify('playlist-end', self.playlist)
+            self.__in_end_notify = False
+            # if the notification refills the playlist,
+            # we do nothing after this point so we don't
+            # mess things up
+            if not self.playlist.has_next():
+                self.stop()
 
     def prev(self):
         if self.playlist.has_prev():
@@ -391,7 +407,6 @@ class Player(object):
             postoffice.notify('prev', entry)
 
     def _on_eos(self):
-        log.debug("EOS!")
         self.next()
 
 the_player = Player() # the player instance

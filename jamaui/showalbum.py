@@ -25,6 +25,7 @@ import gtk
 import cgi
 import hildon
 import jamaendo
+from player import Playlist
 from playerwindow import open_playerwindow
 from settings import settings
 from postoffice import postoffice
@@ -55,10 +56,6 @@ class ShowAlbum(hildon.StackableWindow):
         self.download = self.make_imagebutton('download', self.on_download)
         self.favorite = self.make_imagebutton('favorite', self.on_favorite)
         self.license = self.make_imagebutton('license', self.on_license)
-        self.playbtn = hildon.GtkButton(gtk.HILDON_SIZE_FINGER_HEIGHT)
-        self.playbtn.set_label("Play album")
-        self.playbtn.set_border_width(0)
-        self.playbtn.connect('clicked', self.on_play)
 
         vbox2 = gtk.VBox()
         self.albumname = gtk.Label()
@@ -68,13 +65,13 @@ class ShowAlbum(hildon.StackableWindow):
         self.tracks = TrackList(numbers=True)
         self.tracks.connect('row-activated', self.row_activated)
 
-        for track in jamaendo.get_tracks(album.ID):
+        self.tracklist = jamaendo.get_tracks(album.ID)
+        for track in self.tracklist:
             self.tracks.add_track(track)
 
         top_hbox.pack_start(vbox1, False)
         top_hbox.pack_start(vbox2, True)
         vbox1.pack_start(self.cover, True)
-        vbox1.pack_start(self.playbtn, False)
         vbox1.pack_start(self.bbox, False)
         self.bbox.add(self.goto_artist)
         self.bbox.add(self.download)
@@ -149,8 +146,10 @@ class ShowAlbum(hildon.StackableWindow):
 
     def row_activated(self, treeview, path, view_column):
         _id = self.tracks.get_track_id(path)
-        track = jamaendo.get_track(_id)
-        self.open_item(track)
+        playlist = Playlist(self.tracklist)
+        playlist.jump_to(_id)
+        wnd = open_playerwindow()
+        wnd.play_tracks(playlist)
 
     def open_item(self, item):
         if isinstance(item, jamaendo.Album):

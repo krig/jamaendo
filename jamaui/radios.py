@@ -59,14 +59,6 @@ class RadiosWindow(hildon.StackableWindow):
         return button
 
     def row_activated(self, treeview, path, view_column):
-        _id = self.radiolist.get_radio_id(path)
-        item = self.radios[_id]
-        self.open_item(item)
-
-    def open_item(self, item):
-        hildon.hildon_gtk_window_set_progress_indicator(self, 1)
-        tracks = jamaendo.get_radio_tracks(item.ID)
-        hildon.hildon_gtk_window_set_progress_indicator(self, 0)
-        if tracks:
-            wnd = open_playerwindow()
-            wnd.play_tracks(tracks)
+        name, _id = self.radiolist.get_radio_id(path)
+        wnd = open_playerwindow()
+        wnd.play_radio(name, _id)

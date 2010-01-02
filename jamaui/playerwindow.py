@@ -26,6 +26,7 @@ import gobject
 import hildon
 import util
 import pango
+import jamaendo
 from settings import settings
 from postoffice import postoffice
 from player import Playlist, the_player
@@ -60,10 +61,10 @@ class PlayerWindow(hildon.StackableWindow):
         self.playlist_pos = gtk.Label()
         self.playlist_pos.set_alignment(1.0,0)
         self.track = gtk.Label()
-        self.track.set_alignment(0,0)
+        self.track.set_alignment(0,1)
         self.track.set_ellipsize(pango.ELLIPSIZE_END)
         self.artist = gtk.Label()
-        self.artist.set_alignment(0,0)
+        self.artist.set_alignment(0,0.5)
         self.artist.set_ellipsize(pango.ELLIPSIZE_END)
         self.album = gtk.Label()
         self.album.set_alignment(0,0)
@@ -104,6 +105,7 @@ class PlayerWindow(hildon.StackableWindow):
         self.add(vbox)
 
         postoffice.connect('album-cover', self, self.set_album_cover)
+        postoffice.connect('playlist-end', self, self.on_playlist_end)
         postoffice.connect(['next', 'prev', 'play', 'pause', 'stop'], self, self.on_state_changed)
 
         #print "Created player window, playlist: %s" % (self.playlist)
@@ -164,7 +166,7 @@ class PlayerWindow(hildon.StackableWindow):
 
     def on_destroy(self, wnd):
         self.stop_position_timer()
-        postoffice.disconnect(['album-cover', 'next', 'prev', 'play', 'stop'], self)
+        postoffice.disconnect(['album-cover', 'playlist-end', 'next', 'prev', 'play', 'stop'], self)
 
     def add_stock_button(self, btns, stock, cb):
         btn = hildon.GtkButton(gtk.HILDON_SIZE_FINGER_HEIGHT)
@@ -199,7 +201,11 @@ class PlayerWindow(hildon.StackableWindow):
             self.playbtn.set_data('state', 'play')
 
     def set_labels(self, track, artist, album, playlist_pos, playlist_size):
-        self.playlist_pos.set_markup('<span size="small">Track %s of %s</span>'%(int(playlist_pos)+1, playlist_size))
+        if self.playlist.radio_mode:
+            ppstr = '<span size="small">Radio: %s</span>'%(cgi.escape(self.playlist.radio_name))
+        else:
+            ppstr = '<span size="small">Track %s of %s</span>'%(int(playlist_pos)+1, playlist_size)
+        self.playlist_pos.set_markup(ppstr)
         self.track.set_markup('<span size="x-large">%s</span>'%(cgi.escape(track)))
         self.artist.set_markup('<span size="large">%s</span>'%(cgi.escape(artist)))
         self.album.set_markup('<span foreground="#aaaaaa">%s</span>'%(cgi.escape(album)))
@@ -258,9 +264,37 @@ class PlayerWindow(hildon.StackableWindow):
             if playing and albumid and (int(playing) == int(albumid)):
                 self.cover.set_from_file(cover)
 
+    def play_radio(self, radio_name, radio_id):
+        playlist = Playlist()
+        playlist.radio_mode = True
+        playlist.radio_name = radio_name
+        playlist.radio_id = radio_id
+        log.debug("Playing radio: %s", playlist)
+        self.refill_radio(playlist)
+
+    def refill_radio(self, playlist):
+        if playlist.radio_mode:
+            playlist.add(jamaendo.get_radio_tracks(playlist.radio_id))
+            log.debug("Refilling radio %s", playlist)
+            self.player.playlist = playlist
+            self.playlist = playlist
+            self.player.next()
+            log.debug("Playlist current: %s, playing? %s", playlist.current_index(),
+                      self.player.playing())
+
+    def on_playlist_end(self, playlist):
+        if playlist.radio_mode:
+            self.refill_radio(playlist)
+
     def play_tracks(self, tracks):
+        self.__play_tracks(tracks)
+
+    def __play_tracks(self, tracks):
         self.clear_position()
-        self.playlist = Playlist(tracks)
+        if isinstance(tracks, Playlist):
+            self.playlist = tracks
+        else:
+            self.playlist = Playlist(tracks)
         self.player.stop()
         self.player.play(self.playlist)
 

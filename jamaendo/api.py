@@ -28,7 +28,8 @@
 
 # An improved, structured jamendo API wrapper for the N900 with cacheing
 # Image / cover downloads.. and more?
-import urllib, threading, os, gzip, time, simplejson, re
+import urllib, threading, os, time, simplejson, re
+import logging
 
 _CACHEDIR = None
 _COVERDIR = None
@@ -37,21 +38,15 @@ _MP3URL = _GET2+'stream/track/redirect/?id=%d&streamencoding=mp31'
 _OGGURL = _GET2+'stream/track/redirect/?id=%d&streamencoding=ogg2'
 _TORRENTURL = _GET2+'bittorrent/file/redirect/?album_id=%d&type=archive&class=mp32'
 
-def set_cache_dir(cachedir):
-    global _CACHEDIR
-    global _COVERDIR
-    _CACHEDIR = cachedir
-    _COVERDIR = os.path.join(_CACHEDIR, 'covers')
-
-    try:
-        os.makedirs(_CACHEDIR)
-    except OSError:
-        pass
-
-    try:
-        os.makedirs(_COVERDIR)
-    except OSError:
-        pass
+try:
+    log = logging.getLogger(__name__)
+except:
+    class StdoutLogger(object):
+        def info(self, s, *args):
+            print s % (args)
+        def debug(self, s, *args):
+            pass#print s % (args)
+    log = StdoutLogger()
 
 # These classes can be partially constructed,
 # and if asked for a property they don't know,
@@ -104,7 +99,7 @@ class LazyQuery(object):
     def __repr__(self):
         try:
             return u"%s(%s)"%(self.__class__.__name__,
-                              u", ".join(repr(v) for k,v in self.__dict__.iteritems() if not k.startswith('_')))
+                              u", ".join(("%s:%s"%(k,repr(v))) for k,v in self.__dict__.iteritems() if not k.startswith('_')))
         except UnicodeEncodeError:
             #import traceback
             #traceback.print_exc()
@@ -200,6 +195,8 @@ _CACHED_ARTISTS = 100
 _CACHED_ALBUMS = 200
 _CACHED_TRACKS = 500
 _CACHED_RADIOS = 10
+# cache sizes, persistant
+_CACHED_COVERS = 2048
 
 # TODO: cache queries?
 
@@ -218,7 +215,7 @@ class Query(object):
         pass
 
     def _geturl(self, url):
-        print "*** %s" % (url)
+        log.info("%s", url)
         Query._ratelimit()
         try:
             f = urllib.urlopen(url)
@@ -233,8 +230,6 @@ class Query(object):
 
     def execute(self):
         raise NotImplemented
-
-import threading
 
 class CoverFetcher(threading.Thread):
     def __init__(self):
@@ -289,25 +284,46 @@ class CoverCache(object):
     """
     def __init__(self):
         self._covers = {} # (albumid, size) -> file
-        coverdir = _COVERDIR if _COVERDIR else '/tmp'
-        if os.path.isdir(coverdir):
-            covermatch = re.compile(r'(\d+)\-(\d+)\.jpg')
-            for fil in os.listdir(coverdir):
-                fl = os.path.join(coverdir, fil)
-                m = covermatch.match(fil)
-                if m and os.path.isfile(fl):
-                    self._covers[(int(m.group(1)), int(m.group(2)))] = fl
         self._fetcher = CoverFetcher()
         self._fetcher.start()
+        if _COVERDIR and os.path.isdir(_COVERDIR):
+            self.prime_cache()
+
+    def prime_cache(self):
+        coverdir = _COVERDIR
+        covermatch = re.compile(r'(\d+)\-(\d+)\.jpg')
+
+        prev_covers = os.listdir(coverdir)
+
+        if len(prev_covers) > _CACHED_COVERS:
+            import random
+            dropn = len(prev_covers) - _CACHED_COVERS
+            todrop = random.sample(prev_covers, dropn)
+            log.warning("Deleting from cache: %s", todrop)
+            for d in todrop:
+                m = covermatch.match(d)
+                if m:
+                    try:
+                        os.unlink(os.path.join(coverdir, d))
+                    except OSError, e:
+                        log.exception('unlinking failed')
+
+        for fil in os.listdir(coverdir):
+            fl = os.path.join(coverdir, fil)
+            m = covermatch.match(fil)
+            if m and os.path.isfile(fl):
+                self._covers[(int(m.group(1)), int(m.group(2)))] = fl
 
     def fetch_cover(self, albumid, size):
-        coverdir = _COVERDIR if _COVERDIR else '/tmp'
-        to = os.path.join(coverdir, '%d-%d.jpg'%(albumid, size))
-        if not os.path.isfile(to):
-            url = _GET2+'image/album/redirect/?id=%d&imagesize=%d'%(albumid, size)
-            urllib.urlretrieve(url, to)
-            self._covers[(albumid, size)] = to
-        return to
+        coverdir = _COVERDIR
+        if coverdir:
+            to = os.path.join(coverdir, '%d-%d.jpg'%(albumid, size))
+            if not os.path.isfile(to):
+                url = _GET2+'image/album/redirect/?id=%d&imagesize=%d'%(albumid, size)
+                urllib.urlretrieve(url, to)
+                self._covers[(albumid, size)] = to
+            return to
+        return None
 
     def get_cover(self, albumid, size):
         cover = self._covers.get((albumid, size), None)
@@ -323,6 +339,24 @@ class CoverCache(object):
             self._fetcher.request_cover(albumid, size, cb)
 
 _cover_cache = CoverCache()
+
+def set_cache_dir(cachedir):
+    global _CACHEDIR
+    global _COVERDIR
+    _CACHEDIR = cachedir
+    _COVERDIR = os.path.join(_CACHEDIR, 'covers')
+
+    try:
+        os.makedirs(_CACHEDIR)
+    except OSError:
+        pass
+
+    try:
+        os.makedirs(_COVERDIR)
+    except OSError:
+        pass
+
+    _cover_cache.prime_cache()
 
 def get_album_cover(albumid, size=100):
     return _cover_cache.get_cover(albumid, size)
@@ -393,11 +427,7 @@ class GetQuery(Query):
             'params' : 'user_idstr=%s',
             'constructor' : [Album]
             },
-    #http://api.jamendo.com/get2/id+name+url+image+artist_name/album/jsonpretty/album_user_starred/?user_idstr=sylvinus&n=all
-    #q = SearchQuery('album', user_idstr=user)
-
         }
-#http://api.jamendo.com/get2/id+name+image+artist_name+album_name+album_id+numalbum+duration/track/json/radio_track_inradioplaylist+track_album+album_artist/?order=numradio_asc&radio_id=283
 
     def __init__(self, what, ID):
         Query.__init__(self)
@@ -471,6 +501,14 @@ def _update_cache(cache, new_items):
         elif isinstance(item, Album) and item.tracks:
             for track in item.tracks:
                 _update_cache(_tracks, track)
+    # enforce cache limits here!
+    # also, TODO: save/load cache between sessions
+    # that will require storing a timestamp with
+    # each item, though..
+    # perhaps,
+    # artists: 1 day - changes often
+    # albums: 2-5 days - changes less often (?)
+    # tracks: 1 week - changes rarely, queried often
 
 def get_artist(artist_id):
     """Returns: Artist"""

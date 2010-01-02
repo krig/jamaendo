@@ -7,6 +7,12 @@ import logging
 
 log = logging.getLogger(__name__)
 
+class ImageDownloader(object):
+    """
+    TODO: background downloader of images
+    for album lists, track lists, etc
+    """
+
 class AlbumList(gtk.TreeView):
     def __init__(self):
         gtk.TreeView.__init__(self)
@@ -89,8 +95,8 @@ class RadioList(gtk.TreeView):
 
     def get_radio_id(self, path):
         treeiter = self.__store.get_iter(path)
-        _, _id = self.__store.get(treeiter, 0, 1)
-        return _id
+        name, _id = self.__store.get(treeiter, 0, 1)
+        return name, _id
 
     def radio_name(self, radio):
         if radio.idstr:
