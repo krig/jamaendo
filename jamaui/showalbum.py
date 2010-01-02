@@ -22,6 +22,7 @@
 #  (based on http://pygstdocs.berlios.de/pygst-tutorial/seeking.html)
 #
 import gtk
+import cgi
 import hildon
 import jamaendo
 from playerwindow import open_playerwindow
@@ -61,7 +62,7 @@ class ShowAlbum(hildon.StackableWindow):
 
         vbox2 = gtk.VBox()
         self.albumname = gtk.Label()
-        self.albumname.set_markup('<big>%s</big>'%(album.name))
+        self.albumname.set_markup('<big>%s</big>'%(cgi.escape(album.name)))
         self.trackarea = hildon.PannableArea()
 
         self.tracks = TrackList(numbers=True)
@@ -90,10 +91,8 @@ class ShowAlbum(hildon.StackableWindow):
 
         self.create_menu()
 
-        self.show_all()
-
     def create_menu(self):
-        def on_player():
+        def on_player(*args):
             from playerwindow import open_playerwindow
             open_playerwindow()
         self.menu = hildon.AppMenu()
@@ -150,7 +149,8 @@ class ShowAlbum(hildon.StackableWindow):
 
     def row_activated(self, treeview, path, view_column):
         _id = self.tracks.get_track_id(path)
-        log.debug("clicked %s", _id)
+        track = jamaendo.get_track(_id)
+        self.open_item(track)
 
     def open_item(self, item):
         if isinstance(item, jamaendo.Album):

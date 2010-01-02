@@ -59,7 +59,7 @@ def set_cache_dir(cachedir):
 
 _ARTIST_FIELDS = ['id', 'name', 'image']
 _ALBUM_FIELDS = ['id', 'name', 'image', 'artist_name', 'artist_id', 'license_url']
-_TRACK_FIELDS = ['id', 'name', 'image', 'artist_name', 'album_name', 'album_id', 'numalbum', 'duration']
+_TRACK_FIELDS = ['id', 'name', 'image', 'artist_id', 'artist_name', 'album_name', 'album_id', 'numalbum', 'duration']
 _RADIO_FIELDS = ['id', 'name', 'idstr', 'image']
 
 class LazyQuery(object):
@@ -152,6 +152,7 @@ class Track(LazyQuery):
         self.ID = int(ID)
         self.name = None
         self.image = None
+        self.artist_id = None
         self.artist_name = None
         self.album_name = None
         self.album_id = None
@@ -167,10 +168,10 @@ class Track(LazyQuery):
        return _OGGURL%(self.ID)
 
     def _needs_load(self):
-        return self._needs_load_impl('name', 'artist_name', 'album_name', 'album_id', 'numalbum', 'duration')
+        return self._needs_load_impl('name', 'artist_name', 'artist_id', 'album_name', 'album_id', 'numalbum', 'duration')
 
     def _set_from(self, other):
-        return self._set_from_impl(other, 'name', 'image', 'artist_name', 'album_name', 'album_id', 'numalbum', 'duration')
+        return self._set_from_impl(other, 'name', 'image', 'artist_name', 'artist_id', 'album_name', 'album_id', 'numalbum', 'duration')
 
 class Radio(LazyQuery):
     def __init__(self, ID, json=None):
@@ -217,7 +218,7 @@ class Query(object):
         pass
 
     def _geturl(self, url):
-        #print "*** %s" % (url)
+        print "*** %s" % (url)
         Query._ratelimit()
         try:
             f = urllib.urlopen(url)
@@ -347,9 +348,19 @@ class GetQuery(Query):
             'params' : 'artist_id=%d',
             'constructor' : Artist
             },
+        'artist_list' : {
+            'url' : _GET2+'+'.join(_ALBUM_FIELDS)+'/artist/json/?',
+            'params' : 'artist_id=%s',
+            'constructor' : Album
+            },
         'album' : {
             'url' : _GET2+'+'.join(_ALBUM_FIELDS)+'/album/json/?',
             'params' : 'album_id=%d',
+            'constructor' : Album
+            },
+        'album_list' : {
+            'url' : _GET2+'+'.join(_ALBUM_FIELDS)+'/album/json/?',
+            'params' : 'album_id=%s',
             'constructor' : Album
             },
         'albums' : {
@@ -360,6 +371,11 @@ class GetQuery(Query):
         'track' : {
             'url' : _GET2+'+'.join(_TRACK_FIELDS)+'/track/json/track_album+album_artist?',
             'params' : 'id=%d',
+            'constructor' : Track
+            },
+        'track_list' : {
+            'url' : _GET2+'+'.join(_TRACK_FIELDS)+'/track/json/track_album+album_artist?',
+            'params' : 'id=%s',
             'constructor' : Track
             },
         'tracks' : {
@@ -449,6 +465,12 @@ def _update_cache(cache, new_items):
             old._set_from(item)
         else:
             cache[item.ID] = item
+        if isinstance(item, Artist) and item.albums:
+            for album in item.albums:
+                _update_cache(_albums, album)
+        elif isinstance(item, Album) and item.tracks:
+            for track in item.tracks:
+                _update_cache(_tracks, track)
 
 def get_artist(artist_id):
     """Returns: Artist"""
@@ -463,8 +485,56 @@ def get_artist(artist_id):
             a = a[0]
     return a
 
-def get_albums(artist_id):
+def get_artists(artist_ids):
+    """Returns: [Artist]"""
+    assert(isinstance(artist_ids, list))
+    found = []
+    lookup = []
+    for artist_id in artist_ids:
+        a = _artists.get(artist_id, None)
+        if not a:
+            lookup.append(artist_id)
+        else:
+            found.append(a)
+    if lookup:
+        q = GetQuery('artist_list', '+'.join(str(x) for x in lookup))
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_artists, a)
+        lookup = a
+    return found + lookup
+
+def get_album_list(album_ids):
     """Returns: [Album]"""
+    assert(isinstance(album_ids, list))
+    found = []
+    lookup = []
+    for album_id in album_ids:
+        a = _albums.get(album_id, None)
+        if not a:
+            lookup.append(album_id)
+        else:
+            found.append(a)
+    if lookup:
+        q = GetQuery('album_list', '+'.join(str(x) for x in lookup))
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_albums, a)
+        lookup = a
+    return found + lookup
+
+def get_albums(artist_id):
+    """Returns: [Album]
+    Parameter can either be an artist_id or a list of album ids.
+    """
+    if isinstance(artist_id, list):
+        return get_album_list(artist_id)
+    a = _artists.get(artist_id, None)
+    if a and a.albums:
+        return a.albums
+
     q = GetQuery('albums', artist_id)
     a = q.execute()
     if not a:
@@ -485,8 +555,36 @@ def get_album(album_id):
             a = a[0]
     return a
 
-def get_tracks(album_id):
+def get_track_list(track_ids):
     """Returns: [Track]"""
+    assert(isinstance(track_ids, list))
+    found = []
+    lookup = []
+    for track_id in track_ids:
+        a = _tracks.get(track_id, None)
+        if not a:
+            lookup.append(track_id)
+        else:
+            found.append(a)
+    if lookup:
+        q = GetQuery('track_list', '+'.join(str(x) for x in lookup))
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_tracks, a)
+        lookup = a
+    return found + lookup
+
+def get_tracks(album_id):
+    """Returns: [Track]
+    Parameter can either be an album_id or a list of track ids.
+    """
+    if isinstance(album_id, list):
+        return get_track_list(album_id)
+    a = _albums.get(album_id, None)
+    if a and a.tracks:
+        return a.tracks
+
     q = GetQuery('tracks', album_id)
     a = q.execute()
     if not a:
@@ -602,6 +700,7 @@ def favorite_albums(user):
 def _artist_loader(self):
     if self._needs_load():
         artist = get_artist(self.ID)
+        artist.albums = get_albums(self.ID)
         self._set_from(artist)
 Artist.load = _artist_loader
 

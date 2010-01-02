@@ -359,12 +359,15 @@ class Player(object):
                 entry = self.playlist.next()
                 self.backend.play_url('mp3', entry.mp3_url())
                 log.debug("playing %s", entry)
+            postoffice.notify('play', entry)
 
     def pause(self):
         self.backend.pause()
+        postoffice.notify('pause', self.playlist.current())
 
     def stop(self):
         self.backend.stop()
+        postoffice.notify('stop', self.playlist.current())
 
     def playing(self):
         return self.backend.playing()
@@ -375,6 +378,7 @@ class Player(object):
             entry = self.playlist.next()
             self.backend.play_url('mp3', entry.mp3_url())
             log.debug("playing %s", entry)
+            postoffice.notify('next', entry)
         else:
             self.stop()
 
@@ -384,6 +388,7 @@ class Player(object):
             entry = self.playlist.prev()
             self.backend.play_url('mp3', entry.mp3_url())
             log.debug("playing %s", entry)
+            postoffice.notify('prev', entry)
 
     def _on_eos(self):
         log.debug("EOS!")

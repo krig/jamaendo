@@ -87,7 +87,7 @@ class SearchWindow(hildon.StackableWindow):
         self.create_menu()
 
     def create_menu(self):
-        def on_player():
+        def on_player(*args):
             from playerwindow import open_playerwindow
             open_playerwindow()
         self.menu = hildon.AppMenu()

@@ -31,7 +31,7 @@ log = logging.getLogger(__name__)
 
 class Settings(object):
     defaults = {
-        'volume':0.5,
+        'volume':0.1,
         'user':None,
         'favorites':set([]) # local favorites - until we can sync back
         }

@@ -69,15 +69,13 @@ class FavoritesWindow(hildon.StackableWindow):
                                                                msg)
                 banner.set_timeout(3000)
 
-            for item in settings.favorites:
-                try:
-                    if isinstance(item, tuple) and len(item) == 2:
-                        ftype, fid = item
-                        if ftype == 'album':
-                            add_album(fid, lambda: jamaendo.get_album(fid))
+            favorite_albums = [f[1] for f in settings.favorites if isinstance(f, tuple) and len(f) == 2 and f[0] == 'album' and f[1] not in self.idmap]
+            try:
+                for album in jamaendo.get_albums(favorite_albums):
+                    add_album(album.ID, lambda: album)
 
-                except jamaendo.JamendoAPIException, e:
-                    log.exception("jamaendo.get_album(%s)"%(fid))
+            except jamaendo.JamendoAPIException, e:
+                log.exception("jamaendo.get_albums(%s)"%(favorite_albums))
 
             self.add(self.panarea)
 

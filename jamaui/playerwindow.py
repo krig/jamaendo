@@ -24,10 +24,15 @@
 import gtk
 import gobject
 import hildon
+import util
+import pango
 from settings import settings
 from postoffice import postoffice
 from player import Playlist, the_player
 import logging
+import cgi
+
+from songposition import SongPosition
 
 log = logging.getLogger(__name__)
 
@@ -43,32 +48,38 @@ class PlayerWindow(hildon.StackableWindow):
 
         vbox = gtk.VBox()
 
-        hbox = gtk.HBox()
+        hbox = gtk.HBox(False, 8)
 
         self.cover = gtk.Image()
-        self.cover.set_from_stock(gtk.STOCK_CDROM, gtk.ICON_SIZE_DIALOG)
+        tmp = util.find_resource('album.png')
+        if tmp:
+            self.cover.set_from_file(tmp)
 
         vbox2 = gtk.VBox()
 
         self.playlist_pos = gtk.Label()
+        self.playlist_pos.set_alignment(1.0,0)
         self.track = gtk.Label()
-        self.progress = hildon.GtkHScale()
-        self.progress.set_draw_value(False)
-        self.progress.set_range(0.0, 1.0)
+        self.track.set_alignment(0,0)
+        self.track.set_ellipsize(pango.ELLIPSIZE_END)
         self.artist = gtk.Label()
+        self.artist.set_alignment(0,0)
+        self.artist.set_ellipsize(pango.ELLIPSIZE_END)
         self.album = gtk.Label()
+        self.album.set_alignment(0,0)
+        self.album.set_ellipsize(pango.ELLIPSIZE_END)
+        self.progress = SongPosition()
 
         self.set_labels('', '', '', 0, 0)
 
         self._position_timer = None
 
-        vbox2.pack_start(self.track, True)
-        vbox2.pack_start(self.artist, False)
-        vbox2.pack_start(self.album, False)
         vbox2.pack_start(self.playlist_pos, False)
-        vbox2.pack_start(self.progress, False)
+        vbox2.pack_start(self.track, True)
+        vbox2.pack_start(self.artist, True)
+        vbox2.pack_start(self.album, True)
 
-        hbox.pack_start(self.cover, True, True, 0)
+        hbox.pack_start(self.cover, False, True, 0)
         hbox.pack_start(vbox2, True, True, 0)
 
         vbox.pack_start(hbox, True, True, 0)
@@ -76,37 +87,84 @@ class PlayerWindow(hildon.StackableWindow):
         btns = gtk.HButtonBox()
         btns.set_property('layout-style', gtk.BUTTONBOX_SPREAD)
 
-        vbox.pack_end(btns, False, True, 0)
+        vbox.pack_start(btns, False, True, 0)
+
+        vbox.pack_start(self.progress, False)
 
         self.add_stock_button(btns, gtk.STOCK_MEDIA_PREVIOUS, self.on_prev)
         self.add_play_button(btns)
         self.add_stock_button(btns, gtk.STOCK_MEDIA_STOP, self.on_stop)
         self.add_stock_button(btns, gtk.STOCK_MEDIA_NEXT, self.on_next)
 
-        self.volume = hildon.VVolumebar()
-        self.volume.set_property('can-focus', False)
-        self.volume.connect('level_changed', self.volume_changed_hildon)
-        self.volume.connect('mute_toggled', self.mute_toggled)
-        #self.__gui_root.main_window.connect( 'key-press-event',
-        #                                     self.on_key_press )
-        hbox.pack_start(self.volume, False)
+        #self.volume = hildon.VVolumebar()
+        #self.volume.set_property('can-focus', False)
+        #self.volume.connect('level_changed', self.volume_changed_hildon)
+        #self.volume.connect('mute_toggled', self.mute_toggled)
+        #hbox.pack_start(self.volume, False)
         self.add(vbox)
 
         postoffice.connect('album-cover', self, self.set_album_cover)
+        postoffice.connect(['next', 'prev', 'play', 'pause', 'stop'], self, self.on_state_changed)
 
         #print "Created player window, playlist: %s" % (self.playlist)
 
+        self.on_state_changed()
+
+        self.create_menu()
+
+    def create_menu(self):
+        self.menu = hildon.AppMenu()
+
+        def to_artist(*args):
+            import jamaendo
+            from showartist import ShowArtist
+            track = self.playlist.current()
+            artist = jamaendo.get_artist(int(track.artist_id))
+            wnd = ShowArtist(artist)
+            wnd.show_all()
+        def to_album(*args):
+            import jamaendo
+            from showalbum import ShowAlbum
+            track = self.playlist.current()
+            album = jamaendo.get_album(int(track.album_id))
+            wnd = ShowAlbum(album)
+            wnd.show_all()
+
+        b = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        b.set_label("Artist")
+        b.connect("clicked", to_artist)
+        self.menu.append(b)
+
+        b = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        b.set_label("Album")
+        b.connect("clicked", to_album)
+        self.menu.append(b)
+
+        self.menu.show_all()
+        self.set_app_menu(self.menu)
+
+    def on_state_changed(self, *args):
         self.update_state()
         self.update_play_button()
 
+        if self.player.playing():
+            self.start_position_timer()
+        else:
+            self.stop_position_timer()
+
+
     def get_album_id(self):
-        if self.playlist and self.playlist.current_index() > -1:
-            return self.playlist.current().album_id
+        if self.player.playlist and self.player.playlist.current():
+            c = self.player.playlist.current()
+            if not c.album_id:
+                c.load()
+            if c.album_id:
+                return c.album_id
         return None
 
     def on_destroy(self, wnd):
         self.stop_position_timer()
-        postoffice.disconnect('album-cover', self)
+        postoffice.disconnect(['album-cover', 'next', 'prev', 'play', 'stop'], self)
 
     def add_stock_button(self, btns, stock, cb):
         btn = hildon.GtkButton(gtk.HILDON_SIZE_FINGER_HEIGHT)
@@ -141,10 +199,10 @@ class PlayerWindow(hildon.StackableWindow):
             self.playbtn.set_data('state', 'play')
 
     def set_labels(self, track, artist, album, playlist_pos, playlist_size):
-        self.playlist_pos.set_markup('<span size="small">%s/%s songs</span>'%(playlist_pos, playlist_size))
-        self.track.set_markup('<span size="x-large">%s</span>'%(track))
-        self.artist.set_markup('<span size="large">%s</span>'%(artist))
-        self.album.set_markup('<span foreground="#aaaaaa">%s</span>'%(album))
+        self.playlist_pos.set_markup('<span size="small">Track %s of %s</span>'%(int(playlist_pos)+1, playlist_size))
+        self.track.set_markup('<span size="x-large">%s</span>'%(cgi.escape(track)))
+        self.artist.set_markup('<span size="large">%s</span>'%(cgi.escape(artist)))
+        self.album.set_markup('<span foreground="#aaaaaa">%s</span>'%(cgi.escape(album)))
 
 
     def volume_changed_hildon(self, widget):
@@ -174,63 +232,52 @@ class PlayerWindow(hildon.StackableWindow):
             self._position_timer = None
 
     def clear_position(self):
-        self.progress.set_value(0)
+        self.progress.set_position(0)
 
     def set_song_position(self, time_elapsed, total_time):
         value = (float(time_elapsed) / float(total_time)) if total_time else 0
-        self.progress.set_value( value )
+        self.progress.set_position(value)
 
     def update_state(self):
         item = self.playlist.current()
         if item:
             if not item.name:
                 item.load()
-            #print "current:", item
             self.set_labels(item.name, item.artist_name, item.album_name,
                             self.playlist.current_index(), self.playlist.size())
             postoffice.notify('request-album-cover', int(item.album_id), 300)
-            #jamaendo.get_album_cover_async(album_cover_receiver, int(item.album_id), size=200)
-            #coverfile = jamaendo.get_album_cover(int(item.album_id), size=200)
-            #print "coverfile:", coverfile
-            #self.cover.set_from_file(coverfile)
+        else:
+            self.set_labels('', '', '', 0, 0)
+            tmp = util.find_resource('album.png')
+            if tmp:
+                self.cover.set_from_file(tmp)
 
     def set_album_cover(self, albumid, size, cover):
         if size == 300:
             playing = self.get_album_id()
-            if int(playing) == int(albumid):
+            if playing and albumid and (int(playing) == int(albumid)):
                 self.cover.set_from_file(cover)
 
     def play_tracks(self, tracks):
-        self.stop_position_timer()
         self.clear_position()
         self.playlist = Playlist(tracks)
         self.player.stop()
         self.player.play(self.playlist)
-        self.update_state()
-        self.update_play_button()
 
     def on_play(self, button):
         if not self.player.playing():
             self.player.play(self.playlist)
-            self.start_position_timer()
-            self.update_state()
-            self.update_play_button()
         else:
-            self.stop_position_timer()
             self.player.pause()
-            self.update_state()
-            self.update_play_button()
     def on_prev(self, button):
         self.player.prev()
-        self.update_state()
+
     def on_next(self, button):
         self.player.next()
-        self.update_state()
+
     def on_stop(self, button):
-        self.stop_position_timer()
         self.clear_position()
         self.player.stop()
-        self.update_play_button()
 
 def open_playerwindow():
     player = PlayerWindow()
