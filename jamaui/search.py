@@ -27,6 +27,7 @@ import jamaendo
 from playerwindow import open_playerwindow
 from showartist import ShowArtist
 from showalbum import ShowAlbum
+from albumlist import MusicList
 
 class SearchWindow(hildon.StackableWindow):
     def __init__(self):
@@ -39,6 +40,7 @@ class SearchWindow(hildon.StackableWindow):
 
         # Results list
         self.panarea = hildon.PannableArea()
+        self.musiclist = MusicList()
         self.result_store = gtk.ListStore(str, int)
         #self.result_store.append(['red'])
         self.result_view = gtk.TreeView(self.result_store)

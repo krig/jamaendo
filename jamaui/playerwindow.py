@@ -240,6 +240,7 @@ class PlayerWindow(hildon.StackableWindow):
     def set_default_cover(self):
         tmp = util.find_resource('album.png')
         if tmp:
+            log.debug("Setting cover to %s", tmp)
             self.cover.set_from_file(tmp)
 
     def update_state(self):
@@ -259,6 +260,7 @@ class PlayerWindow(hildon.StackableWindow):
         if size == 300:
             playing = self.get_album_id()
             if playing and albumid and (int(playing) == int(albumid)):
+                log.debug("Setting cover to %s", cover)
                 self.cover.set_from_file(cover)
 
     def play_radio(self, radio_name, radio_id):

@@ -24,6 +24,7 @@
 # Image / cover downloads.. and more?
 import urllib, threading, os, time, simplejson, re
 import logging, hashlib
+import pycurl, StringIO
 
 _CACHEDIR = None
 _COVERDIR = None
@@ -51,6 +52,19 @@ _ALBUM_FIELDS = ['id', 'name', 'image', 'artist_name', 'artist_id', 'license_url
 _TRACK_FIELDS = ['id', 'name', 'album_image', 'artist_id', 'artist_name', 'album_name', 'album_id', 'numalbum', 'duration']
 _RADIO_FIELDS = ['id', 'name', 'idstr', 'image']
 _TAG_FIELDS = ['id', 'name']
+
+def curlGET(url):
+    c = pycurl.Curl()
+    s = StringIO.StringIO()
+    c.setopt(pycurl.FOLLOWLOCATION, 1)
+    c.setopt(pycurl.URL, url)
+    c.setopt(pycurl.WRITEFUNCTION, s.write)
+    try:
+        c.perform()
+    finally:
+        c.close()
+    s.seek(0)
+    return s.read()
 
 class LazyQuery(object):
     def set_from_json(self, json):
@@ -225,9 +239,7 @@ class Query(object):
         log.info("%s", url)
         Query._ratelimit()
         try:
-            f = urllib.urlopen(url)
-            ret = simplejson.load(f)
-            f.close()
+            ret = simplejson.loads(curlGET(url))
         except Exception, e:
             return None
         return ret
@@ -245,13 +257,29 @@ class CoverFetcher(threading.Thread):
         self.cond = threading.Condition()
         self.work = []
 
+    def _retrieve(self, url, fname):
+        f = open(fname, 'wb')
+        c = pycurl.Curl()
+        c.setopt(pycurl.FOLLOWLOCATION, 1)
+        c.setopt(pycurl.URL, str(url))
+        c.setopt(pycurl.WRITEFUNCTION, f.write)
+        try:
+            c.perform()
+        except:
+            fname = None
+        finally:
+            c.close()
+            f.close()
+        log.debug("Coverfetch: %s -> %s", url, fname)
+        return fname
+
     def _fetch_cover(self, albumid, size):
         try:
             coverdir = _COVERDIR if _COVERDIR else '/tmp'
             to = os.path.join(coverdir, '%d-%d.jpg'%(albumid, size))
             if not os.path.isfile(to):
                 url = _GET2+'image/album/redirect/?id=%d&imagesize=%d'%(albumid, size)
-                urllib.urlretrieve(url, to)
+                to = self._retrieve(url, to)
             return to
         except Exception, e:
             return None
@@ -262,7 +290,7 @@ class CoverFetcher(threading.Thread):
             coverdir = _COVERDIR if _COVERDIR else '/tmp'
             to = os.path.join(coverdir, h+'.jpg')
             if not os.path.isfile(to):
-                urllib.urlretrieve(url, to)
+                to = self._retrieve(url, to)
             return to
         except Exception, e:
             return None
@@ -276,7 +304,7 @@ class CoverFetcher(threading.Thread):
     def request_images(self, urls, cb):
         """cb([(url, image)])"""
         self.cond.acquire()
-        self.work.insert(0, ('images', urls, cb))
+        self.work = [('image', url, cb) for url in urls] + self.work
         self.cond.notify()
         self.cond.release()
 
@@ -294,22 +322,20 @@ class CoverFetcher(threading.Thread):
 
             multi = len(work) > 1
             for job in work:
-                if job[0] == 'images':
-                    self.process_images(job[1], job[2])
+                if job[0] == 'image':
+                    self.process_image(job[1], job[2])
                 else:
                     self.process_cover(*job)
-                if multi:
-                    time.sleep(1.0)
 
     def process_cover(self, albumid, size, cb):
         cover = self._fetch_cover(albumid, size)
         if cover:
             cb(albumid, size, cover)
 
-    def process_images(self, urls, cb):
-        results = [(url, image) for url, image in ((url, self._fetch_image(url)) for url in urls) if image is not None]
-        if results:
-            cb(results)
+    def process_image(self, url, cb):
+        image = self._fetch_image(url)
+        if image:
+            cb([(url, image)])
 
 class CoverCache(object):
     """

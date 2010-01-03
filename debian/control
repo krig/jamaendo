@@ -10,7 +10,7 @@ Homepage: http://jamaendo.garage.maemo.org/
 
 Package: jamaendo
 Architecture: all
-Depends: ${python:Depends}, python2.5-gtk2, python2.5-gstreamer, python2.5-dbus, python2.5-hildon, python-lxml, python2.5-osso
+Depends: ${python:Depends}, python2.5-gtk2, python2.5-gstreamer, python2.5-dbus, python2.5-hildon, python-lxml, python2.5-osso, python-pycurl
 Description: 
 XB-Maemo-Display-Name: Jamaendo Player
 XB-Maemo-Icon-26:

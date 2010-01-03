@@ -38,7 +38,7 @@ gobject.threads_init()
 
 log = logging.getLogger(__name__)
 
-VERSION = '0.1'
+VERSION = '0.2'
 
 try:
     import hildon
@@ -95,6 +95,7 @@ class Jamaui(object):
         settings.load()
 
         postoffice.connect('request-album-cover', self, self.on_request_cover)
+        postoffice.connect('request-images', self, self.on_request_images)
         log.debug("Created main window.")
 
     def save_settings(self):
@@ -176,8 +177,14 @@ class Jamaui(object):
     def on_request_cover(self, albumid, size):
         jamaendo.get_album_cover_async(self.got_album_cover, int(albumid), size)
 
+    def on_request_images(self, urls):
+        jamaendo.get_images_async(self.got_images, urls)
+
     def got_album_cover(self, albumid, size, cover):
         postoffice.notify('album-cover', albumid, size, cover)
+
+    def got_images(self, images):
+        postoffice.notify('images', images)
 
     #def add_featured_button(self):
     #    self.featured_sel = hildon.TouchSelector(text=True)
@@ -193,7 +200,7 @@ class Jamaui(object):
     #    self.bbox.add(btn)
 
     def destroy(self, widget):
-        postoffice.disconnect('request-album-cover', self)
+        postoffice.disconnect(['request-album-cover', 'request-images'], self)
         self.save_settings()
         from player import the_player
         if the_player:
@@ -261,11 +268,12 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
 
     def on_featured(self, button):
         dialog = hildon.PickerDialog(self.window)
-        sel = hildon.TouchSelector(text=True)
+        sel = hildon.TouchSelectorEntry(text=True)
         for feature, _ in FeaturedWindow.features:
             sel.append_text(feature)
         dialog.set_selector(sel)
         dialog.set_title("Featured")
+        sel.unselect_all(0)
         if dialog.run() == gtk.RESPONSE_OK:
             txt = sel.get_current_text()
             self.featuredwnd = FeaturedWindow(txt)

@@ -41,9 +41,10 @@ class RadiosWindow(hildon.StackableWindow):
 
         self.radios = {}
         hildon.hildon_gtk_window_set_progress_indicator(self, 1)
-        for item in jamaendo.starred_radios():
+        radios = jamaendo.starred_radios()
+        for item in radios:
             self.radios[item.ID] = item
-            self.radiolist.add_radio(item)
+        self.radiolist.add_radios(radios)
         hildon.hildon_gtk_window_set_progress_indicator(self, 0)
 
         self.add(self.panarea)

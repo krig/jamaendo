@@ -6,7 +6,7 @@ log = logging.getLogger(__name__)
 
 # shows the current song position (looking a bit nicer than a default widget, hopefully)
 class SongPosition(gtk.DrawingArea):
-    WIDTH = 8.0
+    WIDTH = 32.0
     HEIGHT = 8.0
 
     def __init__(self):
@@ -29,9 +29,9 @@ class SongPosition(gtk.DrawingArea):
         darkclr.add_color_stop_rgba(1.0, 0.25, 0.25, 0.25, 1.0)
 
         markerclr = cairo.LinearGradient(0.0, 0.0, 0.0, self.HEIGHT)
-        markerclr.add_color_stop_rgba(0.0, *orange1)
-        markerclr.add_color_stop_rgba(0.5, *orange0)
-        markerclr.add_color_stop_rgba(1.0, *orange0)
+        markerclr.add_color_stop_rgba(0.0, 1.0, 1.0, 1.0, 0.0)
+        markerclr.add_color_stop_rgba(0.5, 1.0, 1.0, 1.0, 0.75)
+        markerclr.add_color_stop_rgba(1.0, 1.0, 1.0, 1.0, 1.0)
 
         self.lightclr = lightclr
         self.darkclr = darkclr
@@ -84,7 +84,10 @@ class SongPosition(gtk.DrawingArea):
         context.fill()
 
     def set_position(self, pos):
-        assert 0 <= pos <= 1
+        if pos < 0.0:
+            pos = 0.0
+        elif pos > 1.0:
+            pos = 1.0
         self.pos = pos
         self.invalidate()
 
