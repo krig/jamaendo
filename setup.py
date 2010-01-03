@@ -51,7 +51,7 @@ setup(
     version = '0.1',
     author = "Kristoffer Gronlund",
     author_email = "kristoffer.gronlund@purplescout.se",
-    url = "http://github.com/krig/jamaendo",
+    url = "http://jamaendo.garage.maemo.org/",
     packages = ['jamaendo', 'jamaui'],
     zip_safe=False,
     scripts = ['scripts/jamaendo'],

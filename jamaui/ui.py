@@ -200,8 +200,8 @@ class Jamaui(object):
     def show_about(self, w, win):
         dialog = gtk.AboutDialog()
         dialog.set_program_name("jamaendo")
-        dialog.set_website("http://github.com/krig")
-        dialog.set_website_label("http://github.com/krig")
+        dialog.set_website("http://jamaendo.garage.maemo.org/")
+        dialog.set_website_label("http://jamaendo.garage.maemo.org/")
         dialog.set_version(VERSION)
         dialog.set_license("""Copyright (c) 2010, Kristoffer Gronlund
 All rights reserved.
