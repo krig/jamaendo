@@ -195,6 +195,9 @@ class Jamaui(object):
     def destroy(self, widget):
         postoffice.disconnect('request-album-cover', self)
         self.save_settings()
+        from player import the_player
+        if the_player:
+            the_player.stop()
         gtk.main_quit()
 
     def show_about(self, w, win):
