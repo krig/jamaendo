@@ -670,7 +670,7 @@ def get_albums(artist_id):
     a = q.execute()
     if not a:
         raise JamendoAPIException(str(q))
-    _update_cache(_artists, a)
+    _update_cache(_albums, a)
     return a
 
 def get_album(album_id):
