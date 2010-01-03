@@ -48,8 +48,9 @@ except:
 
 _ARTIST_FIELDS = ['id', 'name', 'image']
 _ALBUM_FIELDS = ['id', 'name', 'image', 'artist_name', 'artist_id', 'license_url']
-_TRACK_FIELDS = ['id', 'name', 'image', 'artist_id', 'artist_name', 'album_name', 'album_id', 'numalbum', 'duration']
+_TRACK_FIELDS = ['id', 'name', 'album_image', 'artist_id', 'artist_name', 'album_name', 'album_id', 'numalbum', 'duration']
 _RADIO_FIELDS = ['id', 'name', 'idstr', 'image']
+_TAG_FIELDS = ['id', 'name']
 
 class LazyQuery(object):
     def set_from_json(self, json):
@@ -140,9 +141,9 @@ class Track(LazyQuery):
     def __init__(self, ID, json=None):
         self.ID = int(ID)
         self.name = None
-        self.image = None
         self.artist_id = None
         self.artist_name = None
+        self.album_image = None
         self.album_name = None
         self.album_id = None
         self.numalbum = None
@@ -160,7 +161,7 @@ class Track(LazyQuery):
         return self._needs_load_impl('name', 'artist_name', 'artist_id', 'album_name', 'album_id', 'numalbum', 'duration')
 
     def _set_from(self, other):
-        return self._set_from_impl(other, 'name', 'image', 'artist_name', 'artist_id', 'album_name', 'album_id', 'numalbum', 'duration')
+        return self._set_from_impl(other, 'name', 'album_image', 'artist_name', 'artist_id', 'album_name', 'album_id', 'numalbum', 'duration')
 
 class Radio(LazyQuery):
     def __init__(self, ID, json=None):
@@ -177,6 +178,18 @@ class Radio(LazyQuery):
     def _set_from(self, other):
         return self._set_from_impl(other, 'name', 'idstr', 'image')
 
+class Tag(LazyQuery):
+    def __init__(self, ID, json=None):
+        self.ID = int(ID)
+        self.name = None
+        if json:
+            self.set_from_json(json)
+
+    def _needs_load(self):
+        return self._needs_load_impl('name')
+
+    def _set_from(self, other):
+        return self._set_from_impl(other, 'name')
 
 _artists = {} # id -> Artist()
 _albums = {} # id -> Album()
@@ -476,6 +489,11 @@ class GetQuery(Query):
             'params' : 'user_idstr=%s',
             'constructor' : [Album]
             },
+        'tag' : {
+            'url' : _GET2+'+'.join(_TRACK_FIELDS)+'/track/json/track_album+album_artist?',
+            'params' : 'tag_id=%d&n=50&order=rating_desc',
+            'constructor' : [Track]
+            },
         }
 
     def __init__(self, what, ID):
@@ -505,7 +523,7 @@ class GetQuery(Query):
         return self.url + self.params % (self.ID)
 
 class SearchQuery(GetQuery):
-    def __init__(self, what, query=None, order=None, user=None, count=10):
+    def __init__(self, what, query=None, order=None, user=None, count=20):
         GetQuery.__init__(self, what, None)
         self.query = query
         self.order = order
@@ -701,6 +719,16 @@ def get_radio_tracks(radio_id):
     _update_cache(_tracks, a)
     return a
 
+#http://api.jamendo.com/get2/id+name/track/plain/?tag_id=327&n=50&order=rating_desc
+def get_tag_tracks(tag_id):
+    """Returns: [Track]"""
+    q = GetQuery('tag', tag_id)
+    a = q.execute()
+    if not a:
+        raise JamendoAPIException(str(q))
+    _update_cache(_tracks, a)
+    return a
+
 def search_artists(query):
     """Returns: [Artist]"""
     q = SearchQuery('artist', query, 'searchweight_desc')
@@ -755,6 +783,33 @@ def tracks_of_the_week():
     _update_cache(_tracks, a)
     return a
 
+def top_artists(order='rating_desc', count=20):
+    """Returns: [Artist]"""
+    q = SearchQuery('artist', order=order, count=count)
+    a = q.execute()
+    if not a:
+        raise JamendoAPIException(str(q))
+    _update_cache(_artists, a)
+    return a
+
+def top_albums(order='rating_desc', count=20):
+    """Returns: [Album]"""
+    q = SearchQuery('album', order=order, count=count)
+    a = q.execute()
+    if not a:
+        raise JamendoAPIException(str(q))
+    _update_cache(_albums, a)
+    return a
+
+def top_tracks(order='rating_desc', count=20):
+    """Returns: [Track]"""
+    q = SearchQuery('track', order=order, count=count)
+    a = q.execute()
+    if not a:
+        raise JamendoAPIException(str(q))
+    _update_cache(_tracks, a)
+    return a
+
 def get_radio(radio_id):
     """Returns: Radio"""
     q = CustomQuery(_GET2+"id+name+idstr+image/radio/json?id=%d"%(radio_id))
@@ -772,6 +827,14 @@ def starred_radios():
     if not js:
         raise JamendoAPIException(str(q))
     return [Radio(int(radio['id']), json=radio) for radio in js]
+
+def top_tags(count=50, order='rating_desc'):
+    """Returns: [Tag]"""
+    q = CustomQuery(_GET2+"id+name/tag/json?n=%d&order=%s"%(count, order))
+    js = q.execute()
+    if not js:
+        raise JamendoAPIException(str(q))
+    return [Tag(int(tag['id']), json=tag) for tag in js]
 
 def favorite_albums(user):
     """Returns: [Album]"""

@@ -37,7 +37,10 @@ def _alist(l, match):
 class FeaturedWindow(hildon.StackableWindow):
     features = (("Albums of the week",jamaendo.albums_of_the_week),
                 ("Tracks of the week",jamaendo.tracks_of_the_week),
-                ("New releases",jamaendo.new_releases)
+                ("New releases",jamaendo.new_releases),
+                ("Top 50 tags", lambda: jamaendo.top_tags(count=50)),
+                ("Top 50 albums", lambda: jamaendo.top_albums(count=50)),
+                ("Top 50 tracks", lambda: jamaendo.top_tracks(count=50)),
                 )
 
     def __init__(self, feature):
@@ -122,3 +125,6 @@ class FeaturedWindow(hildon.StackableWindow):
         elif isinstance(item, jamaendo.Track):
             wnd = open_playerwindow()
             wnd.play_tracks([item])
+        elif isinstance(item, jamaendo.Tag):
+            wnd = open_playerwindow()
+            wnd.play_tracks(jamaendo.get_tag_tracks(item.ID))

@@ -28,7 +28,7 @@
 
 from api import set_cache_dir, \
     JamendoAPIException, \
-    Artist, Album, Track, Radio, \
+    Artist, Album, Track, Radio, Tag, \
     get_album_cover, \
     get_album_cover_async, \
     get_images_async, \
@@ -41,9 +41,15 @@ from api import set_cache_dir, \
     search_artists, \
     search_albums, \
     search_tracks, \
+    top_artists, \
+    top_albums, \
+    top_tracks, \
+    top_tags, \
     albums_of_the_week, \
     new_releases, \
     tracks_of_the_week, \
     get_radio, \
     starred_radios, \
-    favorite_albums
+    favorite_albums, \
+    get_tag_tracks
+
