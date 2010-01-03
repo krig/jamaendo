@@ -38,9 +38,13 @@ from songposition import SongPosition
 log = logging.getLogger(__name__)
 
 class PlayerWindow(hildon.StackableWindow):
+    instance = None
+
     def __init__(self):
         hildon.StackableWindow.__init__(self)
         self.set_title("jamaendo")
+
+        PlayerWindow.instance = self
 
         self.connect('destroy', self.on_destroy)
 
@@ -153,6 +157,7 @@ class PlayerWindow(hildon.StackableWindow):
         return None
 
     def on_destroy(self, wnd):
+        PlayerWindow.instance = None
         self.stop_position_timer()
         postoffice.disconnect(['album-cover', 'next', 'prev', 'play', 'stop'], self)
 
@@ -297,6 +302,15 @@ class PlayerWindow(hildon.StackableWindow):
         self.player.stop()
 
 def open_playerwindow():
-    player = PlayerWindow()
-    player.show_all()
+    if PlayerWindow.instance:
+        player = PlayerWindow.instance
+        stack = player.get_stack()
+        sz = stack.size()
+        windows = stack.pop(sz)
+        windows.remove(player)
+        windows.append(player)
+        stack.push_list(windows)
+    else:
+        player = PlayerWindow()
+        player.show_all()
     return player
