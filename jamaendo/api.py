@@ -289,7 +289,6 @@ class CoverFetcher(threading.Thread):
                     time.sleep(1.0)
 
     def process_cover(self, albumid, size, cb):
-        albumid, size, cb = job
         cover = self._fetch_cover(albumid, size)
         if cover:
             cb(albumid, size, cover)
