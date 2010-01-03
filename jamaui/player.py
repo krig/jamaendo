@@ -190,10 +190,10 @@ class GStreamer(_Player):
         if t == gst.MESSAGE_EOS:
             log.debug("Gstreamer: End of stream")
             self.eos_callback()
-        elif t == gst.MESSAGE_STATE_CHANGED:
-            if (message.src == self.player and
-                message.structure['new-state'] == gst.STATE_PLAYING):
-                log.debug("gstreamer: state -> playing")
+        #elif t == gst.MESSAGE_STATE_CHANGED:
+        #    if (message.src == self.player and
+        #        message.structure['new-state'] == gst.STATE_PLAYING):
+        #        log.debug("gstreamer: state -> playing")
         elif t == gst.MESSAGE_ERROR:
             err, debug = message.parse_error()
             log.critical( 'Error: %s %s', err, debug )
@@ -349,7 +349,6 @@ class Player(object):
         self.backend = PlayerBackend()
         self.backend.set_eos_callback(self._on_eos)
         self.playlist = Playlist()
-        self.__in_end_notify = False # ugly...
 
     def get_position_duration(self):
         return self.backend.get_position_duration()
@@ -386,17 +385,17 @@ class Player(object):
             self.backend.stop(reset=False)
             entry = self.playlist.next()
             self.backend.play_url('mp3', entry.mp3_url())
-            log.debug("playing %s", entry)
+            log.debug("playing %s:%s", entry.ID, entry.name)
             postoffice.notify('next', entry)
-        elif not self.__in_end_notify:
-            self.__in_end_notify = True
-            postoffice.notify('playlist-end', self.playlist)
-            self.__in_end_notify = False
-            # if the notification refills the playlist,
-            # we do nothing after this point so we don't
-            # mess things up
-            if not self.playlist.has_next():
+        elif self.playlist.radio_mode:
+            log.debug("Refilling radio %s", self.playlist)
+            self.playlist.add(jamaendo.get_radio_tracks(self.playlist.radio_id))
+            if self.playlist.has_next():
+                self.next()
+            else:
                 self.stop()
+        else:
+            self.stop()
 
     def prev(self):
         if self.playlist.has_prev():

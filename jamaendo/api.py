@@ -468,7 +468,7 @@ class GetQuery(Query):
             },
         'radio' : {
             'url' : _GET2+'+'.join(_TRACK_FIELDS)+'/track/json/radio_track_inradioplaylist+track_album+album_artist/?',
-            'params' : 'order=random_asc&radio_id=%d',
+            'params' : 'order=random_asc&radio_id=%d&n=16',
             'constructor' : [Track]
             },
         'favorite_albums' : {

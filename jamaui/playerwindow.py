@@ -52,9 +52,7 @@ class PlayerWindow(hildon.StackableWindow):
         hbox = gtk.HBox(False, 8)
 
         self.cover = gtk.Image()
-        tmp = util.find_resource('album.png')
-        if tmp:
-            self.cover.set_from_file(tmp)
+        self.set_default_cover()
 
         vbox2 = gtk.VBox()
 
@@ -97,18 +95,10 @@ class PlayerWindow(hildon.StackableWindow):
         self.add_stock_button(btns, gtk.STOCK_MEDIA_STOP, self.on_stop)
         self.add_stock_button(btns, gtk.STOCK_MEDIA_NEXT, self.on_next)
 
-        #self.volume = hildon.VVolumebar()
-        #self.volume.set_property('can-focus', False)
-        #self.volume.connect('level_changed', self.volume_changed_hildon)
-        #self.volume.connect('mute_toggled', self.mute_toggled)
-        #hbox.pack_start(self.volume, False)
         self.add(vbox)
 
         postoffice.connect('album-cover', self, self.set_album_cover)
-        postoffice.connect('playlist-end', self, self.on_playlist_end)
         postoffice.connect(['next', 'prev', 'play', 'pause', 'stop'], self, self.on_state_changed)
-
-        #print "Created player window, playlist: %s" % (self.playlist)
 
         self.on_state_changed()
 
@@ -118,14 +108,12 @@ class PlayerWindow(hildon.StackableWindow):
         self.menu = hildon.AppMenu()
 
         def to_artist(*args):
-            import jamaendo
             from showartist import ShowArtist
             track = self.playlist.current()
             artist = jamaendo.get_artist(int(track.artist_id))
             wnd = ShowArtist(artist)
             wnd.show_all()
         def to_album(*args):
-            import jamaendo
             from showalbum import ShowAlbum
             track = self.playlist.current()
             album = jamaendo.get_album(int(track.album_id))
@@ -166,7 +154,7 @@ class PlayerWindow(hildon.StackableWindow):
 
     def on_destroy(self, wnd):
         self.stop_position_timer()
-        postoffice.disconnect(['album-cover', 'playlist-end', 'next', 'prev', 'play', 'stop'], self)
+        postoffice.disconnect(['album-cover', 'next', 'prev', 'play', 'stop'], self)
 
     def add_stock_button(self, btns, stock, cb):
         btn = hildon.GtkButton(gtk.HILDON_SIZE_FINGER_HEIGHT)
@@ -244,6 +232,11 @@ class PlayerWindow(hildon.StackableWindow):
         value = (float(time_elapsed) / float(total_time)) if total_time else 0
         self.progress.set_position(value)
 
+    def set_default_cover(self):
+        tmp = util.find_resource('album.png')
+        if tmp:
+            self.cover.set_from_file(tmp)
+
     def update_state(self):
         item = self.playlist.current()
         if item:
@@ -251,12 +244,11 @@ class PlayerWindow(hildon.StackableWindow):
                 item.load()
             self.set_labels(item.name, item.artist_name, item.album_name,
                             self.playlist.current_index(), self.playlist.size())
+            self.set_default_cover()
             postoffice.notify('request-album-cover', int(item.album_id), 300)
         else:
             self.set_labels('', '', '', 0, 0)
-            tmp = util.find_resource('album.png')
-            if tmp:
-                self.cover.set_from_file(tmp)
+            self.set_default_cover()
 
     def set_album_cover(self, albumid, size, cover):
         if size == 300:
@@ -265,26 +257,16 @@ class PlayerWindow(hildon.StackableWindow):
                 self.cover.set_from_file(cover)
 
     def play_radio(self, radio_name, radio_id):
-        playlist = Playlist()
+        playlist = Playlist([])
         playlist.radio_mode = True
         playlist.radio_name = radio_name
         playlist.radio_id = radio_id
+        playlist.add(jamaendo.get_radio_tracks(playlist.radio_id))
         log.debug("Playing radio: %s", playlist)
-        self.refill_radio(playlist)
-
-    def refill_radio(self, playlist):
-        if playlist.radio_mode:
-            playlist.add(jamaendo.get_radio_tracks(playlist.radio_id))
-            log.debug("Refilling radio %s", playlist)
-            self.player.playlist = playlist
-            self.playlist = playlist
-            self.player.next()
-            log.debug("Playlist current: %s, playing? %s", playlist.current_index(),
-                      self.player.playing())
-
-    def on_playlist_end(self, playlist):
-        if playlist.radio_mode:
-            self.refill_radio(playlist)
+        self.__play_tracks(playlist)
+        log.debug("Playlist current: %s, playing? %s",
+                  playlist.current_index(),
+                  self.player.playing())
 
     def play_tracks(self, tracks):
         self.__play_tracks(tracks)
@@ -295,6 +277,7 @@ class PlayerWindow(hildon.StackableWindow):
             self.playlist = tracks
         else:
             self.playlist = Playlist(tracks)
+        log.debug("Playing: %s", self.playlist)
         self.player.stop()
         self.player.play(self.playlist)
 
