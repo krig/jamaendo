@@ -7,7 +7,7 @@ A media player for the Nokia N900 and other Maemo 5 (Fremantle) phones.
 JAMENDO is an online platform that distributes musical works under
 Creative Commons licenses.
 
-Jamaendo was written by Kristoffer Grönlund.
+Jamaendo is written by Kristoffer Grönlund.
 
 ## Panucci
 
@@ -37,3 +37,8 @@ the build process produces is not entirely optified. It is compatible
 with the `maemo-optify` tool, however. All you need to do is run
 `maemo-optify-deb` on the generated .deb file.
 
+## License
+
+The backend code that speaks to jamendo.com is in the jamaendo module. This module is licensed under a modified New BSD License (modified to remove attribution clauses). See `jamaendo/api.py` for details.
+
+The code that implements the UI and the rest of the application is licensed under a GPL v3 license.

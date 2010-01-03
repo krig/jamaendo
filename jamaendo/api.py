@@ -8,12 +8,6 @@
 # modification, are permitted provided that the following conditions are met:
 #     * Redistributions of source code must retain the above copyright
 #       notice, this list of conditions and the following disclaimer.
-#     * Redistributions in binary form must reproduce the above copyright
-#       notice, this list of conditions and the following disclaimer in the
-#       documentation and/or other materials provided with the distribution.
-#     * Neither the name of Jamaendo nor the
-#       names of its contributors may be used to endorse or promote products
-#       derived from this software without specific prior written permission.
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 # ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -29,7 +23,7 @@
 # An improved, structured jamendo API wrapper for the N900 with cacheing
 # Image / cover downloads.. and more?
 import urllib, threading, os, time, simplejson, re
-import logging
+import logging, hashlib
 
 _CACHEDIR = None
 _COVERDIR = None
@@ -249,9 +243,27 @@ class CoverFetcher(threading.Thread):
         except Exception, e:
             return None
 
+    def _fetch_image(self, url):
+        try:
+            h = hashlib.md5(url).hexdigest()
+            coverdir = _COVERDIR if _COVERDIR else '/tmp'
+            to = os.path.join(coverdir, h+'.jpg')
+            if not os.path.isfile(to):
+                urllib.urlretrieve(url, to)
+            return to
+        except Exception, e:
+            return None
+
     def request_cover(self, albumid, size, cb):
         self.cond.acquire()
         self.work.insert(0, (albumid, size, cb))
+        self.cond.notify()
+        self.cond.release()
+
+    def request_images(self, urls, cb):
+        """cb([(url, image)])"""
+        self.cond.acquire()
+        self.work.insert(0, ('images', urls, cb))
         self.cond.notify()
         self.cond.release()
 
@@ -268,12 +280,24 @@ class CoverFetcher(threading.Thread):
             self.cond.release()
 
             multi = len(work) > 1
-            for albumid, size, cb in work:
-                cover = self._fetch_cover(albumid, size)
-                if cover:
-                    cb(albumid, size, cover)
-                    if multi:
-                        time.sleep(1.0)
+            for job in work:
+                if job[0] == 'images':
+                    self.process_images(job[1], job[2])
+                else:
+                    self.process_cover(*job)
+                if multi:
+                    time.sleep(1.0)
+
+    def process_cover(self, albumid, size, cb):
+        albumid, size, cb = job
+        cover = self._fetch_cover(albumid, size)
+        if cover:
+            cb(albumid, size, cover)
+
+    def process_images(self, urls, cb):
+        results = [(url, image) for url, image in ((url, self._fetch_image(url)) for url in urls) if image is not None]
+        if results:
+            cb(results)
 
 class CoverCache(object):
     """
@@ -284,6 +308,7 @@ class CoverCache(object):
     """
     def __init__(self):
         self._covers = {} # (albumid, size) -> file
+        self._images = {}
         self._fetcher = CoverFetcher()
         self._fetcher.start()
         if _COVERDIR and os.path.isdir(_COVERDIR):
@@ -336,7 +361,29 @@ class CoverCache(object):
         if cover:
             cb(albumid, size, cover)
         else:
-            self._fetcher.request_cover(albumid, size, cb)
+            def cb2(albumid, size, cover):
+                self._covers[(albumid, size)] = cover
+                cb(albumid, size, cover)
+            self._fetcher.request_cover(albumid, size, cb2)
+
+    def get_images_async(self, url_list, cb):
+        found = []
+        lookup = []
+        for url in url_list:
+            image = self._images.get(url, None)
+            if image:
+                found.append((url, image))
+            else:
+                lookup.append(url)
+        if found:
+            cb(found)
+
+        if lookup:
+            def cb2(results):
+                for url, image in results:
+                    self._images[url] = image
+                cb(results)
+            self._fetcher.request_images(lookup, cb2)
 
 _cover_cache = CoverCache()
 
@@ -363,6 +410,9 @@ def get_album_cover(albumid, size=100):
 
 def get_album_cover_async(cb, albumid, size=100):
     _cover_cache.get_async(albumid, size, cb)
+
+def get_images_async(cb, url_list):
+    _cover_cache.get_images_async(url_list, cb)
 
 class CustomQuery(Query):
     def __init__(self, url):
