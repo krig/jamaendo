@@ -1,3 +1,13 @@
+jamaendo (0.2-1) unstable; urgency=low
+
+  * Second preview
+  * Images in album/track lists
+  * Improved 'featured' - now with tags and more
+  * Using pycurl instead of urllib to fetch
+  * Various other bugfixes
+
+ -- Kristoffer Gronlund <kristoffer.gronlund@purplescout.se>  Sun,  3 Jan 2010 22:21:44 +0100
+
 jamaendo (0.1-1) unstable; urgency=low
 
   * First preview
