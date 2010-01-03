@@ -50,14 +50,13 @@ h1 {
     max-width: 800px;
     margin: 0 auto;
     margin-top: 128px;
-    font-size: 0.5em;
-    font-weight: bold;
+    font-size: 0.75em;
     color: #aaa;
     padding: 8;
 }
 
 #footer a {
-    color: #999;
+    color: #cc0000;
 }
 
 
