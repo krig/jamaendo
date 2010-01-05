@@ -35,6 +35,7 @@ import cgi
 
 from songposition import SongPosition
 from listbox import ListDialog
+import colors
 log = logging.getLogger(__name__)
 
 class PlayerWindow(hildon.StackableWindow):
@@ -169,6 +170,7 @@ class PlayerWindow(hildon.StackableWindow):
     def add_stock_button(self, btns, stock, cb):
         btn = hildon.GtkButton(gtk.HILDON_SIZE_FINGER_HEIGHT)
         btn.set_relief(gtk.RELIEF_NONE)
+        btn.set_focus_on_click(False)
         sz = gtk.ICON_SIZE_BUTTON
         btn.set_image(gtk.image_new_from_stock(stock, sz))
         btn.connect('clicked', cb)
@@ -199,14 +201,15 @@ class PlayerWindow(hildon.StackableWindow):
             self.playbtn.set_data('state', 'play')
 
     def set_labels(self, track, artist, album, playlist_pos, playlist_size):
+
         if self.playlist.radio_mode:
             ppstr = '<span size="small">Radio: %s</span>'%(cgi.escape(self.playlist.radio_name))
         else:
-            ppstr = '<span size="small">Track %s of %s</span>'%(int(playlist_pos)+1, playlist_size)
+            ppstr = '<span font_desc="%s" foreground="%s">Track %s of %s</span>'%(colors.SmallSystemFont, colors.SecondaryTextColor, int(playlist_pos)+1, playlist_size)
         self.playlist_pos.set_markup(ppstr)
-        self.track.set_markup('<span size="x-large">%s</span>'%(cgi.escape(track)))
-        self.artist.set_markup('<span size="large">%s</span>'%(cgi.escape(artist)))
-        self.album.set_markup('<span foreground="#aaaaaa">%s</span>'%(cgi.escape(album)))
+        self.track.set_markup('<span font_desc="%s">%s</span>'%(colors.LargeSystemFont, cgi.escape(track)))
+        self.artist.set_markup('%s'%(cgi.escape(artist)))
+        self.album.set_markup('<span foreground="%s">%s</span>'%(colors.SecondaryTextColor, cgi.escape(album)))
 
     def show_banner(self, message, timeout = 2000):
         banner = hildon.hildon_banner_show_information(self, '', message)

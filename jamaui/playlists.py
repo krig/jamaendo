@@ -113,6 +113,7 @@ class PlaylistsWindow(hildon.StackableWindow):
         col = gtk.TreeViewColumn('Info')
         self.treeview.append_column(col)
         cell = gtk.CellRendererText()
+        cell.set_property('xalign', 1.0)
         col.pack_start(cell, True)
         col.add_attribute(cell, 'text', self.COL_INFO)
 
