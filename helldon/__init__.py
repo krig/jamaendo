@@ -18,7 +18,7 @@ class Program(gtk.Window):
         self.set_app_paintable(True)
         self._vbox = gtk.VBox()
         self._title = gtk.Label("Jamaendo")
-        self._backbtn = gtk.Button("<<<")
+        self._backbtn = gtk.Button("Quit")
         self._hbox = gtk.HBox()
         self._hbox.pack_start(self._title, True)
         self._hbox.pack_start(self._backbtn, False)
@@ -56,6 +56,10 @@ class Program(gtk.Window):
         self._notebook.set_current_page(idx)
         wnd.show_all()
         wnd._nb_index = idx
+        if self._stack:
+            self._backbtn.set_label("<<<")
+        else:
+            self._backbtn.set_label("Quit")
 
     def popped_stackable(self, wnd=None):
         pass
@@ -71,6 +75,15 @@ class Program(gtk.Window):
 
     def on_back(self, *args):
         self.pop_stackable()
+        if self._stack:
+            self._backbtn.set_label("<<<")
+        else:
+            self._backbtn.set_label("Quit")
+        if self._notebook.get_n_pages() == 0:
+            gtk.main_quit()
+
+    def size(self):
+        return len(self._stack)+1
 
 class StackableWindow(gtk.Frame):
     def __init__(self):
@@ -86,6 +99,9 @@ class StackableWindow(gtk.Frame):
 
     def on_destroy(self, *args):
         Program.instance.popped_stackable(self)
+
+    def get_stack(self):
+        return Program.instance
 
 class AppMenu(object):
     def __init__(self):

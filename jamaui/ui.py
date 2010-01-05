@@ -170,10 +170,14 @@ class Jamaui(object):
         jamaendo.get_images_async(self.got_images, urls)
 
     def got_album_cover(self, albumid, size, cover):
+        gtk.gdk.threads_enter()
         postoffice.notify('album-cover', albumid, size, cover)
+        gtk.gdk.threads_leave()
 
     def got_images(self, images):
+        gtk.gdk.threads_enter()
         postoffice.notify('images', images)
+        gtk.gdk.threads_leave()
 
     #def add_featured_button(self):
     #    self.featured_sel = hildon.TouchSelector(text=True)
