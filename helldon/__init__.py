@@ -15,6 +15,7 @@ class Program(gtk.Window):
 
     def __init__(self):
         gtk.Window.__init__(self, type=gtk.WINDOW_TOPLEVEL)
+        self.set_app_paintable(True)
         self._vbox = gtk.VBox()
         self._title = gtk.Label("Jamaendo")
         self._backbtn = gtk.Button("<<<")
@@ -30,6 +31,14 @@ class Program(gtk.Window):
         self.show_all()
         Program.instance = self
         self._backbtn.connect('clicked', self.on_back)
+
+        bgimg = 'data/bg.png'
+        if bgimg:
+            background, mask = gtk.gdk.pixbuf_new_from_file(bgimg).render_pixmap_and_mask()
+            self.set_app_paintable(True)
+            self.realize()
+            self.window.set_back_pixmap(background, False)
+            self.window.clear()
 
         self._stack = []
 
