@@ -22,7 +22,9 @@ class SongPosition(gtk.DrawingArea):
 
         lightclr = cairo.LinearGradient(0.0, 0.0, 0.0, self.HEIGHT)
         lightclr.add_color_stop_rgba(0.0, *purple1)
-        lightclr.add_color_stop_rgba(1.0, *purple0)
+        lightclr.add_color_stop_rgba(0.5, *purple0)
+        lightclr.add_color_stop_rgba(0.501, *purple1)
+        lightclr.add_color_stop_rgba(1.0, *purple1)
 
         darkclr = cairo.LinearGradient(0.0, 0.0, 0.0, self.HEIGHT)
         darkclr.add_color_stop_rgba(0.0, 0.0, 0.0, 0.0, 0.0)
