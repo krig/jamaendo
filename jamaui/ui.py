@@ -62,16 +62,8 @@ from search import SearchWindow
 from featured import FeaturedWindow
 from radios import RadiosWindow
 from favorites import FavoritesWindow
-
-class PlaylistsWindow(hildon.StackableWindow):
-    def __init__(self):
-        hildon.StackableWindow.__init__(self)
-        self.set_title("Playlists")
-
-        label = gtk.Label("Playlists")
-        vbox = gtk.VBox(False, 0)
-        vbox.pack_start(label, True, True, 0)
-        self.add(vbox)
+from playlists import PlaylistsWindow
+from listbox import ButtonListDialog
 
 class Jamaui(object):
     def __init__(self):
@@ -98,9 +90,6 @@ class Jamaui(object):
         postoffice.connect('request-images', self, self.on_request_images)
         log.debug("Created main window.")
 
-    def save_settings(self):
-        settings.save()
-
     def create_menu(self):
         self.menu = hildon.AppMenu()
 
@@ -119,10 +108,10 @@ class Jamaui(object):
         player.connect("clicked", self.on_favorites)
         self.menu.append(player)
 
-        #player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
-        #player.set_label("Playlists")
-        #player.connect("clicked", self.on_playlists)
-        #self.menu.append(player)
+        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        player.set_label("Playlists")
+        player.connect("clicked", self.on_playlists)
+        self.menu.append(player)
 
         player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
         player.set_label("Settings")
@@ -201,7 +190,7 @@ class Jamaui(object):
 
     def destroy(self, widget):
         postoffice.disconnect(['request-album-cover', 'request-images'], self)
-        self.save_settings()
+        settings.save()
         from player import the_player
         if the_player:
             the_player.stop()
@@ -267,17 +256,15 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
     #    dialog.hide()
 
     def on_featured(self, button):
-        dialog = hildon.PickerDialog(self.window)
-        sel = hildon.TouchSelectorEntry(text=True)
-        for feature, _ in FeaturedWindow.features:
-            sel.append_text(feature)
-        dialog.set_selector(sel)
-        dialog.set_title("Featured")
-        sel.unselect_all(0)
-        if dialog.run() == gtk.RESPONSE_OK:
-            txt = sel.get_current_text()
-            self.featuredwnd = FeaturedWindow(txt)
+        dialog = ButtonListDialog('Featured', self.window)
+        def fn(btn, feature):
+            self.featuredwnd = FeaturedWindow(feature)
             self.featuredwnd.show_all()
+            dialog.response(gtk.RESPONSE_OK)
+        for feature, _ in FeaturedWindow.features:
+            dialog.add_button(feature, fn, feature)
+        dialog.show_all()
+        dialog.run()
         dialog.destroy()
 
     def on_radios(self, button):
@@ -313,7 +300,7 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
         if val and result == gtk.RESPONSE_OK:
             #print "new user name:", val
             settings.user = val
-            self.save_settings()
+            settings.save()
 
 
     def on_favorites(self, button):

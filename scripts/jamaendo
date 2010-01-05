@@ -11,7 +11,7 @@
 import os, sys
 local_module_dir = os.path.join(os.path.dirname(sys.argv[0]), '..')
 if os.path.isdir(local_module_dir):
-    sys.path.append(local_module_dir)
+    sys.path = [local_module_dir] + sys.path
 
 def main():
     from jamaui.ui import Jamaui

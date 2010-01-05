@@ -129,6 +129,9 @@ class Artist(LazyQuery):
     def _set_from(self, other):
         return self._set_from_impl(other, 'name', 'image', 'albums')
 
+    def get_data(self):
+        return {'name':self.name, 'image':self.image}
+
 class Album(LazyQuery):
     def __init__(self, ID, json=None):
         self.ID = int(ID)
@@ -151,6 +154,12 @@ class Album(LazyQuery):
     def _set_from(self, other):
         return self._set_from_impl(other, 'name', 'image', 'artist_name', 'artist_id', 'license_url', 'tracks')
 
+    def get_data(self):
+        return {'name':self.name, 'image':self.image,
+                'artist_name':self.artist_name,
+                'artist_id':self.artist_id,
+                'license_url':self.license_url}
+
 class Track(LazyQuery):
     def __init__(self, ID, json=None):
         self.ID = int(ID)
@@ -170,6 +179,16 @@ class Track(LazyQuery):
 
     def ogg_url(self):
        return _OGGURL%(self.ID)
+
+    def get_data(self):
+        return {'name':self.name,
+                'artist_id':self.artist_id,
+                'artist_name':self.artist_name,
+                'album_image':self.album_image,
+                'album_name':self.album_name,
+                'album_id':self.album_id,
+                'numalbum':self.numalbum,
+                'duration':self.duration}
 
     def _needs_load(self):
         return self._needs_load_impl('name', 'artist_name', 'artist_id', 'album_name', 'album_id', 'numalbum', 'duration')

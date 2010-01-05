@@ -34,7 +34,7 @@ import logging
 import cgi
 
 from songposition import SongPosition
-
+from listbox import ListDialog
 log = logging.getLogger(__name__)
 
 class PlayerWindow(hildon.StackableWindow):
@@ -134,6 +134,11 @@ class PlayerWindow(hildon.StackableWindow):
         b.connect("clicked", to_album)
         self.menu.append(b)
 
+        b = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        b.set_label("Add to playlist")
+        b.connect("clicked", self.on_add_to_playlist)
+        self.menu.append(b)
+
         self.menu.show_all()
         self.set_app_menu(self.menu)
 
@@ -203,6 +208,14 @@ class PlayerWindow(hildon.StackableWindow):
         self.artist.set_markup('<span size="large">%s</span>'%(cgi.escape(artist)))
         self.album.set_markup('<span foreground="#aaaaaa">%s</span>'%(cgi.escape(album)))
 
+    def show_banner(self, message, timeout = 2000):
+        banner = hildon.hildon_banner_show_information(self, '', message)
+        banner.set_timeout(2000)
+
+    def on_add_to_playlist(self, button, user_data=None):
+        track = self.player.playlist.current()
+        from playlists import add_to_playlist
+        add_to_playlist(self, track)
 
     def volume_changed_hildon(self, widget):
         settings.volume = widget.get_level()/100.0

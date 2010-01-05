@@ -32,6 +32,8 @@ from postoffice import postoffice
 import util
 import logging
 from albumlist import TrackList
+from playlists import add_to_playlist
+
 import webbrowser
 
 log = logging.getLogger(__name__)
@@ -97,6 +99,10 @@ class ShowAlbum(hildon.StackableWindow):
         player.set_label("Open player")
         player.connect("clicked", on_player)
         self.menu.append(player)
+        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        player.set_label("Add to playlist")
+        player.connect("clicked", self.on_add_to_playlist)
+        self.menu.append(player)
         self.menu.show_all()
         self.set_app_menu(self.menu)
 
@@ -106,6 +112,10 @@ class ShowAlbum(hildon.StackableWindow):
     def on_album_cover(self, albumid, size, cover):
         if albumid == self.album.ID and size == 300:
             self.cover.set_from_file(cover)
+
+
+    def on_add_to_playlist(self, button, user_data=None):
+        add_to_playlist(self, self.tracklist)
 
     def make_imagebutton(self, name, cb):
         btn = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)

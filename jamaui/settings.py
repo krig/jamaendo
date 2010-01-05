@@ -23,6 +23,8 @@
 #
 import cPickle, os
 import logging
+import jamaendo
+import datetime
 
 from postoffice import postoffice
 
@@ -33,7 +35,8 @@ class Settings(object):
     defaults = {
         'volume':0.1,
         'user':None,
-        'favorites':set([]) # local favorites - until we can sync back
+        'favorites':set([]), # local favorites - until we can sync back
+        'playlists':{},
         }
 
     def __init__(self):
@@ -52,6 +55,27 @@ class Settings(object):
     def favorite(self, album):
         self.favorites.add(('album', album.ID))
         self.save()
+        postoffice.notify('settings-changed', 'favorites', self.favorites)
+
+    def get_playlist(self, playlist, get_track_objects=True):
+        entry = self.playlists.get(playlist)
+        if entry:
+            if get_track_objects:
+                return [jamaendo.Track(item['id'], item['data']) for item in entry]
+            return entry
+        return None
+
+    def add_to_playlist(self, playlist, track):
+        if isinstance(track, jamaendo.Track):
+            track = {'id':track.ID, 'data':track.get_data()}
+        assert(isinstance(track, dict))
+        lst = self.playlists.get(playlist)
+        if not lst:
+            lst = []
+            self.playlists[playlist] = lst
+        lst.append(track)
+        postoffice.notify('settings-changed', 'playlists', self.playlists)
+        log.debug("playlists is now %s", self.playlists)
 
     def load(self):
         if not os.path.isfile(self.__savename):
@@ -67,7 +91,10 @@ class Settings(object):
 
             for k in self.defaults.keys():
                 if k in settings:
+                    if k == 'playlists' and not isinstance(k, dict):
+                        continue
                     setattr(self, k, settings[k])
+            print settings
         except Exception, e:
             log.exception('failed to load settings')
 
@@ -81,6 +108,7 @@ class Settings(object):
             f = open(self.__savename, 'w')
             cPickle.dump(settings, f)
             f.close()
+            print settings
         except Exception, e:
             log.exception('failed to save settings')
 
