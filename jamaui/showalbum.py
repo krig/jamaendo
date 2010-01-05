@@ -23,7 +23,10 @@
 #
 import gtk
 import cgi
-import hildon
+try:
+    import hildon
+except:
+    import helldon as hildon
 import jamaendo
 from player import Playlist
 from playerwindow import open_playerwindow

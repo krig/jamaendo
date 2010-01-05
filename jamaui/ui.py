@@ -47,8 +47,8 @@ except:
         log.critical('Using GTK widgets, install "python2.5-hildon" '
             'for this to work properly.')
     else:
-        log.critical('This ui only works in maemo')
-        sys.exit(1)
+        log.critical('This ui (probably) only works in maemo')
+        import helldon as hildon
 
 from dbus.mainloop.glib import DBusGMainLoop
 

@@ -1,7 +1,12 @@
 # hildon colors
 
 import gtk
-import hildon
+try:
+    import hildon
+    _using_helldon = False
+except:
+    import helldon as hildon
+    _using_helldon = True
 
 # See the Fremantle Master Layout Guide for more information:
 # http://tinyurl.com/fremantle-master-layout-guide
@@ -30,6 +35,10 @@ def get_font_desc(logicalfontname):
     settings = gtk.settings_get_default()
     font_style = gtk.rc_get_style_by_paths(settings, logicalfontname, \
                                                None, None)
+    if not font_style:
+        font_style = gtk.rc_get_style_by_paths(settings,
+                                               'GtkButton', 'GtkButton', gtk.Button)
+
     font_desc = font_style.font_desc
     return font_desc
 
@@ -37,20 +46,31 @@ def get_color(logicalcolorname):
     settings = gtk.settings_get_default()
     color_style = gtk.rc_get_style_by_paths(settings, 'GtkButton', \
                                                 'osso-logical-colors', gtk.Button)
+
+    if not color_style:
+        font_style = gtk.rc_get_style_by_paths(settings,
+                                               'GtkButton', 'GtkButton', gtk.Button)
     return color_style.lookup_color(logicalcolorname)
 
-def font(name):
-    return get_font_desc(name).to_string()
+if _using_helldon:
+    def font(name):
+        return "normal"
+else:
+    def font(name):
+        return get_font_desc(name).to_string()
 
-
-def color(name):
-    return get_color('SecondaryTextColor').to_string()
+if _using_helldon:
+    def color(name):
+        return "#333333"
+else:
+    def color(name):
+        return get_color('SecondaryTextColor').to_string()
 
 import sys
 current_module = sys.modules[__name__]
 
 for fnt in logical_font_names:
-    setattr(current_module, fnt, font(fnt))
+    setattr(current_module, fnt, lambda: font(fnt))
 
 for clr in logical_color_names:
-    setattr(current_module, clr, color(clr))
+    setattr(current_module, clr, lambda: color(clr))

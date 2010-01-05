@@ -22,7 +22,10 @@
 #  (based on http://pygstdocs.berlios.de/pygst-tutorial/seeking.html)
 #
 import gtk
-import hildon
+try:
+    import hildon
+except:
+    import helldon as hildon
 import jamaendo
 from playerwindow import open_playerwindow
 from albumlist import RadioList

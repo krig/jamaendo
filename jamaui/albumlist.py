@@ -1,7 +1,10 @@
 import os
 import gtk
 import gobject
-import hildon
+try:
+    import hildon
+except:
+    import helldon as hildon
 import jamaendo
 import util
 from settings import settings

@@ -23,7 +23,10 @@
 #
 import gtk
 import gobject
-import hildon
+try:
+    import hildon
+except:
+    import helldon as hildon
 import util
 import pango
 import jamaendo
@@ -205,11 +208,11 @@ class PlayerWindow(hildon.StackableWindow):
         if self.playlist.radio_mode:
             ppstr = '<span size="small">Radio: %s</span>'%(cgi.escape(self.playlist.radio_name))
         else:
-            ppstr = '<span font_desc="%s" foreground="%s">Track %s of %s</span>'%(colors.SmallSystemFont, colors.SecondaryTextColor, int(playlist_pos)+1, playlist_size)
+            ppstr = '<span font_desc="%s" foreground="%s">Track %s of %s</span>'%(colors.SmallSystemFont(), colors.SecondaryTextColor(), int(playlist_pos)+1, playlist_size)
         self.playlist_pos.set_markup(ppstr)
-        self.track.set_markup('<span font_desc="%s">%s</span>'%(colors.LargeSystemFont, cgi.escape(track)))
+        self.track.set_markup('<span font_desc="%s">%s</span>'%(colors.LargeSystemFont(), cgi.escape(track)))
         self.artist.set_markup('%s'%(cgi.escape(artist)))
-        self.album.set_markup('<span foreground="%s">%s</span>'%(colors.SecondaryTextColor, cgi.escape(album)))
+        self.album.set_markup('<span foreground="%s">%s</span>'%(colors.SecondaryTextColor(), cgi.escape(album)))
 
     def show_banner(self, message, timeout = 2000):
         banner = hildon.hildon_banner_show_information(self, '', message)

@@ -158,7 +158,7 @@ class GStreamer(_Player):
         self.filesrc = self.player
         self.filesrc_property = 'uri'
         self.volume_control = self.player
-        self.volume_multiplier = 1.
+        self.volume_multiplier = 10.
         self.volume_property = 'volume'
 
     def _on_decoder_pad_added(self, decoder, src_pad, sink_pad):

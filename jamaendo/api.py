@@ -277,6 +277,9 @@ class CoverFetcher(threading.Thread):
         self.work = []
 
     def _retrieve(self, url, fname):
+        BROKEN = 'http://imgjam.com/radios/default/default.100.png'
+        if url == BROKEN:
+            return None
         f = open(fname, 'wb')
         c = pycurl.Curl()
         c.setopt(pycurl.FOLLOWLOCATION, 1)

@@ -1,6 +1,9 @@
 # what the fuck, GTK
 import gtk
-import hildon
+try:
+    import hildon
+except:
+    import helldon as hildon
 
 class ListBox(gtk.TreeView):
     def __init__(self):
