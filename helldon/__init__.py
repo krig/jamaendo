@@ -1,4 +1,5 @@
 import gtk
+import cairo
 
 gtk.HILDON_SIZE_AUTO = -1
 gtk.HILDON_SIZE_AUTO_WIDTH = -1
@@ -10,6 +11,21 @@ BUTTON_ARRANGEMENT_VERTICAL = 1
 def hildon_gtk_window_set_progress_indicator(wnd, onoff):
     pass
 
+def transparent_expose(widget, event):
+    bgimg = 'data/bg.png'
+    if bgimg:
+        background, mask = gtk.gdk.pixbuf_new_from_file(bgimg).render_pixmap_and_mask()
+        #self.realize()
+        widget.window.set_back_pixmap(background, False)
+        #widget.window.clear()
+    #cr = widget.window.cairo_create()
+    #cr.set_operator(cairo.OPERATOR_CLEAR)
+    # Ugly but we don't have event.region
+    #region = gtk.gdk.region_rectangle(event.area)
+    #cr.region(region)
+    #cr.fill()
+    return False
+
 class Program(gtk.Window):
     instance = None
 
@@ -18,13 +34,17 @@ class Program(gtk.Window):
         self.set_app_paintable(True)
         self._vbox = gtk.VBox()
         self._title = gtk.Label("Jamaendo")
+        self._title.set_alignment(0.1, 0.5)
         self._backbtn = gtk.Button("Quit")
+        self._backbtn.set_alignment(1.0, 0.5)
         self._hbox = gtk.HBox()
         self._hbox.pack_start(self._title, True)
         self._hbox.pack_start(self._backbtn, False)
         self._notebook = gtk.Notebook()
         self._notebook.set_size_request(800, 445)
         self._notebook.set_show_tabs(False)
+        self._notebook.set_app_paintable(True)
+        self._notebook.connect("expose-event", transparent_expose)
         self._vbox.pack_start(self._hbox, False)
         self._vbox.pack_start(self._notebook, True)
         self.add(self._vbox)
@@ -60,6 +80,7 @@ class Program(gtk.Window):
             self._backbtn.set_label("<<<")
         else:
             self._backbtn.set_label("Quit")
+        self._notebook.window.clear()
 
     def popped_stackable(self, wnd=None):
         pass
@@ -85,9 +106,27 @@ class Program(gtk.Window):
     def size(self):
         return len(self._stack)+1
 
-class StackableWindow(gtk.Frame):
+    def pop(self, sz):
+        ret = [x for x in self._stack] + [self._notebook.get_nth_page(0)]
+        while self._stack:
+            self.pop_stackable()
+        return ret
+
+    def push_list(self, windows):
+        for window in windows:
+            self.push_stackable(window)
+
+    #        windows = stack.pop(sz)
+    #    windows.remove(player)
+    #    windows.append(player)
+    #    stack.push_list(windows)
+
+
+class StackableWindow(gtk.EventBox):
     def __init__(self):
-        gtk.Frame.__init__(self)
+        gtk.EventBox.__init__(self)
+        self.set_app_paintable(True)
+        #self.connect("expose-event", transparent_expose)
         self._nb_index = 0
         Program.instance.push_stackable(self)
         self.connect('destroy', self.on_destroy)
@@ -126,4 +165,6 @@ class Button(gtk.Button):
         self.set_label(title)
 
 class PannableArea(gtk.ScrolledWindow):
-    pass
+    def __init__(self):
+        gtk.ScrolledWindow.__init__(self)
+        self.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)

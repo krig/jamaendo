@@ -7,33 +7,37 @@ log = logging.getLogger(__name__)
 # shows the current song position (looking a bit nicer than a default widget, hopefully)
 class SongPosition(gtk.DrawingArea):
     WIDTH = 32.0
-    HEIGHT = 8.0
+    HEIGHT = 16.0
 
     def __init__(self):
         gtk.DrawingArea.__init__(self)
         self.connect('expose-event', self.on_expose)
-        self.set_size_request(24, 8)
+        self.set_size_request(self.WIDTH, self.HEIGHT)
         self.pos = 0.0
 
         orange0 = self.hex_to_flt(0xec, 0xac, 0x1f)
-        orange1 = self.hex_to_flt(0xea, 0x86, 0x1d, 0.25)
+        orange1 = self.hex_to_flt(0xea, 0x86, 0x1d)
+        orange2 = self.hex_to_flt(0xda, 0x76, 0x0d)
+        orange3 = self.hex_to_flt(0xd0, 0x70, 0x00)
         purple0 = self.hex_to_flt(0x81, 0x3e, 0x82)
-        purple1 = self.hex_to_flt(0x56, 0x2d, 0x5a, 0.25)
+        purple1 = self.hex_to_flt(0x56, 0x2d, 0x5a)
 
         lightclr = cairo.LinearGradient(0.0, 0.0, 0.0, self.HEIGHT)
-        lightclr.add_color_stop_rgba(0.0, *purple1)
-        lightclr.add_color_stop_rgba(0.5, *purple0)
-        lightclr.add_color_stop_rgba(0.501, *purple1)
-        lightclr.add_color_stop_rgba(1.0, *purple1)
+        lightclr.add_color_stop_rgb(0.0, 1.0, 1.0, 1.0)
+        lightclr.add_color_stop_rgb(0.1, *orange0)
+        lightclr.add_color_stop_rgb(0.5, *orange1)
+        lightclr.add_color_stop_rgb(0.5, *orange2)
+        lightclr.add_color_stop_rgb(1.0, *orange3)
 
         darkclr = cairo.LinearGradient(0.0, 0.0, 0.0, self.HEIGHT)
-        darkclr.add_color_stop_rgba(0.0, 0.0, 0.0, 0.0, 0.0)
-        darkclr.add_color_stop_rgba(1.0, 0.25, 0.25, 0.25, 1.0)
+        darkclr.add_color_stop_rgb(0.0, 0.5, 0.5, 0.5)
+        darkclr.add_color_stop_rgb(0.5, 0.0, 0.0, 0.0)
+        darkclr.add_color_stop_rgb(1.0, 0.25, 0.25, 0.25)
 
         markerclr = cairo.LinearGradient(0.0, 0.0, 0.0, self.HEIGHT)
-        markerclr.add_color_stop_rgba(0.0, 1.0, 1.0, 1.0, 0.0)
-        markerclr.add_color_stop_rgba(0.5, 1.0, 1.0, 1.0, 0.75)
-        markerclr.add_color_stop_rgba(1.0, 1.0, 1.0, 1.0, 1.0)
+        markerclr.add_color_stop_rgb(0.0, 1.0, 1.0, 1.0)
+        markerclr.add_color_stop_rgb(0.5, 1.0, 1.0, 1.0)
+        markerclr.add_color_stop_rgb(1.0, 1.0, 1.0, 1.0)
 
         self.lightclr = lightclr
         self.darkclr = darkclr
@@ -53,16 +57,16 @@ class SongPosition(gtk.DrawingArea):
     #813e82 - light purple
     #562d5a - dark purple
 
-    def hex_to_flt(self, r, g, b, a = 255.0):
-        return float(r)/255.0, float(g)/255.0, float(b)/255.0, float(a)/255.0
+    def hex_to_flt(self, r, g, b):
+        return float(r)/255.0, float(g)/255.0, float(b)/255.0
 
     def draw(self, context):
         rect = self.get_allocation()
 
 
         #context.set_source_rgb(1.0, 0.5, 0.0)
-        lowx = rect.width*self.pos - self.WIDTH*0.5
-        hix = rect.width*self.pos + self.WIDTH*0.5
+        lowx = rect.width*self.pos
+        hix = rect.width*self.pos
 
         if lowx < 0.0:
             lowx = 0.0
@@ -71,19 +75,22 @@ class SongPosition(gtk.DrawingArea):
             lowx = rect.width - self.WIDTH
             hix = rect.width
 
+        context.rectangle(0, 0, rect.width, rect.height)
+        context.set_source(self.darkclr)
+        context.fill()
+
         if lowx > 0.01:
             context.rectangle(0, 0, lowx, rect.height)
             context.set_source(self.lightclr)
             context.fill()
 
-        if hix < rect.width-0.01:
-            context.rectangle(hix, 0, rect.width-hix, rect.height)
-            context.set_source(self.darkclr)
-            context.fill()
+        context.rectangle(0, 0, rect.width, rect.height)
+        context.set_source_rgb(0.6, 0.6, 0.6)
+        context.stroke()
 
-        context.rectangle(lowx, 0, self.WIDTH, rect.height)
-        context.set_source(self.markerclr)
-        context.fill()
+        #context.rectangle(lowx, 0, self.WIDTH, rect.height)
+        #context.set_source(self.markerclr)
+        #context.fill()
 
     def set_position(self, pos):
         if pos < 0.0:

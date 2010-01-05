@@ -55,9 +55,9 @@ class PlayerWindow(hildon.StackableWindow):
         self.player = the_player
         self.playlist = the_player.playlist
 
-        vbox = gtk.VBox()
+        vbox = gtk.VBox(False, 8)
 
-        hbox = gtk.HBox(False, 8)
+        hbox = gtk.HBox(False)
 
         self.cover = gtk.Image()
         self.set_default_cover()
@@ -85,8 +85,10 @@ class PlayerWindow(hildon.StackableWindow):
         vbox2.pack_start(self.track, True)
         vbox2.pack_start(self.artist, True)
         vbox2.pack_start(self.album, True)
+        vbox2.pack_start(self.progress, False, True)
 
-        hbox.pack_start(self.cover, False, True, 0)
+        hbox.set_border_width(8)
+        hbox.pack_start(self.cover, False, True, 8)
         hbox.pack_start(vbox2, True, True, 0)
 
         vbox.pack_start(hbox, True, True, 0)
@@ -95,8 +97,6 @@ class PlayerWindow(hildon.StackableWindow):
         btns.set_property('layout-style', gtk.BUTTONBOX_SPREAD)
 
         vbox.pack_start(btns, False, True, 0)
-
-        vbox.pack_start(self.progress, False)
 
         self.add_stock_button(btns, gtk.STOCK_MEDIA_PREVIOUS, self.on_prev)
         self.add_play_button(btns)
