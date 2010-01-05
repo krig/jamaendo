@@ -2,8 +2,10 @@
 import gtk
 try:
     import hildon
+    _using_helldon = False
 except:
     import helldon as hildon
+    _using_helldon = True
 
 class ListBox(gtk.TreeView):
     def __init__(self):
@@ -42,7 +44,7 @@ class ListBox(gtk.TreeView):
 
 class ListDialog(gtk.Dialog):
     def __init__(self, title, parent=None):
-        gtk.Dialog.__init__(self, title, parent)
+        gtk.Dialog.__init__(self, title, parent if not _using_helldon else None)
         self.listbox = ListBox()
         panarea = hildon.PannableArea()
         panarea.add(self.listbox)
@@ -59,7 +61,7 @@ class ListDialog(gtk.Dialog):
 
 class ButtonListDialog(gtk.Dialog):
     def __init__(self, title, parent=None):
-        gtk.Dialog.__init__(self, title, parent)
+        gtk.Dialog.__init__(self, title, parent if not _using_helldon else None)
         self.panarea = hildon.PannableArea()
         self.panarea.set_size_request(800, 400)
         self.buttons = gtk.VBox(False, 0)

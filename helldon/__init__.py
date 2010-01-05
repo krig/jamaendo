@@ -29,26 +29,54 @@ class Program(gtk.Window):
         self.add(self._vbox)
         self.show_all()
         Program.instance = self
+        self._backbtn.connect('clicked', self.on_back)
+
+        self._stack = []
 
     def add_window(self, wnd):
         pass
 
-    def add_stackable(self, wnd):
+    def push_stackable(self, wnd):
+        while self._notebook.get_n_pages() > 0:
+            p = self._notebook.get_nth_page(0)
+            self._stack.append(p)
+            self._notebook.remove_page(0)
+            p.hide()
+
         idx = self._notebook.append_page(wnd)
         self._notebook.set_current_page(idx)
         wnd.show_all()
         wnd._nb_index = idx
 
+    def popped_stackable(self, wnd=None):
+        pass
+
+    def pop_stackable(self):
+        while self._notebook.get_n_pages() > 0:
+            p = self._notebook.get_nth_page(0)
+            self._notebook.remove_page(0)
+            p.hide()
+        if len(self._stack):
+            tail = self._stack.pop()
+            self.push_stackable(tail)
+
+    def on_back(self, *args):
+        self.pop_stackable()
+
 class StackableWindow(gtk.Frame):
     def __init__(self):
         gtk.Frame.__init__(self)
         self._nb_index = 0
-        Program.instance.add_stackable(self)
+        Program.instance.push_stackable(self)
+        self.connect('destroy', self.on_destroy)
     def set_app_menu(self, menu):
         pass
 
     def set_title(self, title):
         Program.instance._title.set_text(title)#_notebook.set_tab_label_text(self, title)
+
+    def on_destroy(self, *args):
+        Program.instance.popped_stackable(self)
 
 class AppMenu(object):
     def __init__(self):
