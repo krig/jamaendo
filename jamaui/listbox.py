@@ -48,7 +48,7 @@ class ListDialog(gtk.Dialog):
         self.listbox = ListBox()
         panarea = hildon.PannableArea()
         panarea.add(self.listbox)
-        panarea.set_size_request(800, 300)
+        panarea.set_size_request_policy(hildon.SIZE_REQUEST_CHILDREN)
         self.vbox.pack_start(panarea, True, True, 0)
 
         self.selected = None
@@ -69,8 +69,9 @@ class ButtonListDialog(gtk.Dialog):
         self.vbox.pack_start(self.panarea, True, True, 0)
 
     def add_button(self, label, clickcb, *args):
-        btn = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH|gtk.HILDON_SIZE_FINGER_HEIGHT, hildon.BUTTON_ARRANGEMENT_VERTICAL)
+        btn = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH|gtk.HILDON_SIZE_FINGER_HEIGHT,
+                            hildon.BUTTON_ARRANGEMENT_VERTICAL)
         btn.set_label(label)
         btn.connect('clicked', clickcb, *args)
-        self.buttons.pack_end(btn, False, False, 0)
+        self.buttons.pack_start(btn, False, False, 0)
 

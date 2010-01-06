@@ -91,10 +91,11 @@ class Settings(object):
 
             for k in self.defaults.keys():
                 if k in settings:
-                    if k == 'playlists' and not isinstance(k, dict):
+                    val = settings[k]
+                    if k == 'playlists' and not isinstance(val, dict):
                         continue
-                    setattr(self, k, settings[k])
-            print settings
+                    setattr(self, k, val)
+            log.debug("Loaded settings: %s", settings)
         except Exception, e:
             log.exception('failed to load settings')
 
@@ -108,7 +109,7 @@ class Settings(object):
             f = open(self.__savename, 'w')
             cPickle.dump(settings, f)
             f.close()
-            print settings
+            log.debug("Saved settings: %s", settings)
         except Exception, e:
             log.exception('failed to save settings')
 

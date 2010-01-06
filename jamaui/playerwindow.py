@@ -28,6 +28,7 @@ try:
 except:
     import helldon as hildon
 import util
+import datetime
 import pango
 import jamaendo
 from settings import settings
@@ -75,6 +76,9 @@ class PlayerWindow(hildon.StackableWindow):
         self.album = gtk.Label()
         self.album.set_alignment(0,0)
         self.album.set_ellipsize(pango.ELLIPSIZE_END)
+        self.playtime = gtk.Label()
+        self.playtime.set_alignment(1,0)
+        self.playtime.set_ellipsize(pango.ELLIPSIZE_END)
         self.progress = SongPosition()
 
         self.set_labels('', '', '', 0, 0)
@@ -85,6 +89,7 @@ class PlayerWindow(hildon.StackableWindow):
         vbox2.pack_start(self.track, True)
         vbox2.pack_start(self.artist, True)
         vbox2.pack_start(self.album, True)
+        vbox2.pack_start(self.playtime, False, True)
         vbox2.pack_start(self.progress, False, True)
 
         hbox.set_border_width(8)
@@ -252,9 +257,30 @@ class PlayerWindow(hildon.StackableWindow):
     def clear_position(self):
         self.progress.set_position(0)
 
+    def nanosecs_to_str(self, ns):
+        time_secs = int(float(ns)/1000000000.0)
+        if time_secs <= 59:
+            return "00:%02d"%(time_secs)
+        time_mins = int(time_secs/60.0)
+        time_secs -= time_mins*60
+        if time_mins <= 59:
+            return "%02d:%02d"%(time_mins, time_secs)
+
+        time_hrs = int(time_mins/60.0)
+        time_mins -= time_hrs*60
+        return "%d:%02d:%02d"%(time_hrs, time_secs, time_mins)
+
     def set_song_position(self, time_elapsed, total_time):
         value = (float(time_elapsed) / float(total_time)) if total_time else 0
         self.progress.set_position(value)
+
+
+        txt = '<span font_desc="%s" foreground="%s">%s</span>' % \
+            (colors.XLargeSystemFont(),
+             colors.SecondaryTextColor(),
+             self.nanosecs_to_str(time_elapsed)
+             )
+        self.playtime.set_markup(txt)
 
     def set_default_cover(self):
         tmp = util.find_resource('album.png')

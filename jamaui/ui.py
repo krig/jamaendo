@@ -93,11 +93,6 @@ class Jamaui(object):
     def create_menu(self):
         self.menu = hildon.AppMenu()
 
-        #search = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
-        #search.set_label("Search")
-        #search.connect("clicked", self.on_search)
-        #self.menu.append(search)
-
         player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
         player.set_label("Open player")
         player.connect("clicked", self.on_player)
@@ -118,13 +113,6 @@ class Jamaui(object):
         player.connect("clicked", self.on_settings)
         self.menu.append(player)
 
-
-        # Don't use localdb ATM
-        #refresh = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
-        #refresh.set_label("Refresh")
-        #refresh.connect("clicked", self.on_refresh)
-        #self.menu.append(refresh)
-
         menu_about = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
         menu_about.set_label("About")
         menu_about.connect("clicked", self.show_about, self.window)
@@ -143,7 +131,7 @@ class Jamaui(object):
             self.window.window.set_back_pixmap(background, False)
 
         bbox = gtk.HButtonBox()
-        alignment = gtk.Alignment(xalign=0.2, yalign=0.925, xscale=1.0)
+        alignment = gtk.Alignment(xalign=0.2, yalign=0.28, xscale=1.0)
         alignment.add(bbox)
         bbox.set_property('layout-style', gtk.BUTTONBOX_SPREAD)
         self.bbox = bbox
@@ -178,19 +166,6 @@ class Jamaui(object):
         gtk.gdk.threads_enter()
         postoffice.notify('images', images)
         gtk.gdk.threads_leave()
-
-    #def add_featured_button(self):
-    #    self.featured_sel = hildon.TouchSelector(text=True)
-    #    self.featured_sel.append_text("Albums of the week")
-    #    self.featured_sel.append_text("Tracks of the week")
-    #    self.featured_sel.append_text("New releases")
-    #    btn = hildon.PickerButton(gtk.HILDON_SIZE_THUMB_HEIGHT,
-    #                              hildon.BUTTON_ARRANGEMENT_VERTICAL)
-    #    btn.set_text("Featured", "Most listened to")
-    #    btn.set_property('width-request', 225)
-    #    btn.set_selector(self.featured_sel)
-    #    self.featured_btn = btn
-    #    self.bbox.add(btn)
 
     def destroy(self, widget):
         postoffice.disconnect(['request-album-cover', 'request-images'], self)
@@ -248,16 +223,8 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
         dialog.destroy()
 
     def open_link(self, d, url, data):
-        #print "url: %s" % (url)
         import webbrowser
         webbrowser.open_new(url)
-
-
-    #def on_refresh(self, button):
-    #    dialog = RefreshDialog()
-    #    dialog.show_all()
-    #    dialog.run()
-    #    dialog.hide()
 
     def on_featured(self, button):
         dialog = ButtonListDialog('Featured', self.window)
@@ -288,21 +255,19 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
         dialog.set_title("Settings")
         dialog.add_button( gtk.STOCK_OK, gtk.RESPONSE_OK )
         vbox = dialog.vbox
-        tbl = gtk.Table(1, 2)
-        tbl.attach(gtk.Label("Username:"), 0, 1, 0, 1)
+        hboxinner = gtk.HBox()
+        hboxinner.pack_start(gtk.Label("Username:"), False, False, 0)
         entry = hildon.Entry(gtk.HILDON_SIZE_FINGER_HEIGHT)
         entry.set_placeholder("jamendo.com username")
         if settings.user:
             entry.set_text(settings.user)
-        tbl.attach(entry, 1, 2, 0, 1)
-        vbox.pack_start(tbl, True, True, 2)
+        hboxinner.pack_start(entry, True, True, 0)
+        vbox.pack_start(hboxinner, True, True, 0)
         dialog.show_all()
         result = dialog.run()
         val = entry.get_text()
         dialog.destroy()
-        #print val, result
         if val and result == gtk.RESPONSE_OK:
-            #print "new user name:", val
             settings.user = val
             settings.save()
 
@@ -313,22 +278,6 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
 
     def on_player(self, button):
         open_playerwindow()
-
-    '''
-    def on_search(self, button):
-        if self.searchbar:
-            self.searchbar.show()
-        else:
-            self.searchstore = gtk.ListStore(gobject.TYPE_STRING)
-            iter = self.searchstore.append()
-            self.searchstore.set(iter, 0, "Test1")
-            iter = self.searchstore.append()
-            self.searchstore.set(iter, 0, "Test2")
-            self.searchbar = hildon.FindToolbar("Search", self.searchstore, 0)
-            self.searchbar.set_active(0)
-            self.window.add_toolbar(self.searchbar)
-            self.searchbar.show()
-    '''
 
     def run(self):
         ossohelper.application_init('org.jamaendo', '0.1')

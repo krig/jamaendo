@@ -56,4 +56,3 @@ def find_resource(name):
         return os.path.join('/usr/share/jamaendo', name)
     else:
         return None
-

@@ -12,7 +12,7 @@ class SongPosition(gtk.DrawingArea):
     def __init__(self):
         gtk.DrawingArea.__init__(self)
         self.connect('expose-event', self.on_expose)
-        self.set_size_request(self.WIDTH, self.HEIGHT)
+        self.set_size_request(int(self.WIDTH), int(self.HEIGHT))
         self.pos = 0.0
 
         orange0 = self.hex_to_flt(0xec, 0xac, 0x1f)
@@ -85,7 +85,7 @@ class SongPosition(gtk.DrawingArea):
             context.fill()
 
         context.rectangle(0, 0, rect.width, rect.height)
-        context.set_source_rgb(0.6, 0.6, 0.6)
+        context.set_source_rgb(0.3, 0.3, 0.3)
         context.stroke()
 
         #context.rectangle(lowx, 0, self.WIDTH, rect.height)

@@ -26,7 +26,7 @@ import logging
 import sys
 
 LOG_FILENAME = '/tmp/jamaendo.log'
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 LOG_FORMAT = "%(asctime)s %(name)-10s: [%(lineno)4d] %(levelname)-5s %(message)s"
 
 _rootlogger = logging.getLogger()

@@ -64,13 +64,18 @@ if _using_helldon:
         return "#333333"
 else:
     def color(name):
-        return get_color('SecondaryTextColor').to_string()
+        return get_color(name).to_string()
 
 import sys
 current_module = sys.modules[__name__]
 
+def mk_font_fun(name):
+    def inner():
+        return font(name)
+    return inner
+
 for fnt in logical_font_names:
-    setattr(current_module, fnt, lambda: font(fnt))
+    setattr(current_module, fnt.replace('-', ''), mk_font_fun(fnt))
 
 for clr in logical_color_names:
     setattr(current_module, clr, lambda: color(clr))

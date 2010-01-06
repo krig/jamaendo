@@ -29,6 +29,7 @@ except:
 import jamaendo
 from settings import settings
 import logging
+from albumlist import PlaylistList
 
 log = logging.getLogger(__name__)
 
@@ -99,47 +100,40 @@ class PlaylistsWindow(hildon.StackableWindow):
         self.set_title("Playlists")
 
         self.panarea = hildon.PannableArea()
-
-        (self.COL_NAME, self.COL_INFO) = range(2)
-        self.store = gtk.ListStore(str, str)
-        self.treeview = gtk.TreeView()
-        self.treeview.set_model(self.store)
-
-        col = gtk.TreeViewColumn('Name')
-        self.treeview.append_column(col)
-        cell = gtk.CellRendererText()
-        col.pack_start(cell, True)
-        col.add_attribute(cell, 'text', self.COL_NAME)
-        self.treeview.set_search_column(self.COL_NAME)
-        col.set_sort_column_id(self.COL_NAME)
-
-        col = gtk.TreeViewColumn('Info')
-        self.treeview.append_column(col)
-        cell = gtk.CellRendererText()
-        cell.set_property('xalign', 1.0)
-        col.pack_start(cell, True)
-        col.add_attribute(cell, 'text', self.COL_INFO)
-
-        self.treeview.connect('row-activated', self.row_activated)
-
-        self.panarea.add(self.treeview)
-
+        self.playlistlist = PlaylistList()
+        self.playlistlist.empty_message = "No playlists"
+        self.playlistlist.connect('row-activated', self.row_activated)
+        self.panarea.add(self.playlistlist)
         self.add(self.panarea)
 
-        def trackcount(lst):
-            ln = len(lst)
-            if ln > 1:
-                return "(%d tracks)"%(ln)
-            elif ln == 1:
-                return "(1 track)"
-            return "(empty)"
-
         for key, lst in sorted(list(settings.playlists.iteritems())):
-            self.store.append([key, trackcount(lst)])
+            self.playlistlist.add_playlist(key, lst)
+        self.playlistlist.set_loading(False)
+
+        self.create_menu()
+
+    def create_menu(self):
+        def on_player(*args):
+            from playerwindow import open_playerwindow
+            open_playerwindow()
+        self.menu = hildon.AppMenu()
+        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        player.set_label("Open player")
+        player.connect("clicked", on_player)
+        self.menu.append(player)
+        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        player.set_label("Delete playlists")
+        player.connect("clicked", self.on_delete_playlists)
+        self.menu.append(player)
+        self.menu.show_all()
+        self.set_app_menu(self.menu)
+
+    def on_delete_playlists(self, *args):
+        _show_banner(self, "TODOO")
 
     def row_activated(self, treeview, path, view_column):
-        name = self.store.get(self.store.get_iter(path), self.COL_NAME)[0]
-        pl = settings.get_playlist(name)
+        sel = self.playlistlist.get_playlist_name(path)
+        pl = settings.get_playlist(sel)
         if pl:
             from playerwindow import open_playerwindow
             wnd = open_playerwindow()

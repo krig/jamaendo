@@ -44,19 +44,10 @@ class SearchWindow(hildon.StackableWindow):
         # Results list
         self.panarea = hildon.PannableArea()
         self.musiclist = MusicList()
-        self.result_store = gtk.ListStore(str, int)
-        #self.result_store.append(['red'])
-        self.result_view = gtk.TreeView(self.result_store)
-        col = gtk.TreeViewColumn('Name')
-        self.result_view.append_column(col)
-        cell = gtk.CellRendererText()
-        col.pack_start(cell, True)
-        col.add_attribute(cell, 'text', 0)
-        self.result_view.set_search_column(0)
-        col.set_sort_column_id(0)
-        self.result_view.connect('row-activated', self.row_activated)
-
-        self.panarea.add(self.result_view)
+        self.musiclist.loading_message = "Nothing found yet"
+        self.musiclist.empty_message = "No matching results"
+        self.musiclist.connect('row-activated', self.row_activated)
+        self.panarea.add(self.musiclist)
         vbox.pack_start(self.panarea, True, True, 0)
 
 
@@ -110,28 +101,28 @@ class SearchWindow(hildon.StackableWindow):
     def on_search(self, w):
         mode = self.mode.get_active()
         txt = self.entry.get_text()
-        self.result_store.clear()
-        if mode == 0:
-            for artist in jamaendo.search_artists(query=txt):
-                title = artist.name
-                self.idmap[artist.ID] = artist
-                self.result_store.append([title, artist.ID])
-        elif mode == 1:
-            for album in jamaendo.search_albums(query=txt):
-                title = "%s - %s" % (album.artist_name, album.name)
-                self.idmap[album.ID] = album
-                self.result_store.append([title, album.ID])
-        elif mode == 2:
-            for track in jamaendo.search_tracks(query=txt):
-                title = "%s - %s" % (track.artist_name, track.name)
-                self.idmap[track.ID] = track
-                self.result_store.append([title, track.ID])
+        self.musiclist.set_loading(False)
+        self.musiclist.get_model().clear()
+
+        try:
+            if mode == 0:
+                items = jamaendo.search_artists(query=txt)
+            elif mode == 1:
+                items = jamaendo.search_albums(query=txt)
+            elif mode == 2:
+                items = jamaendo.search_tracks(query=txt)
+
+            for item in items:
+                self.idmap[item.ID] = item
+
+            self.musiclist.add_items(items)
+        except jamaendo.JamaendoAPIException:
+            # nothing found, force redraw
+            self.musiclist.queue_draw()
 
     def row_activated(self, treeview, path, view_column):
-        treeiter = self.result_store.get_iter(path)
-        title, _id = self.result_store.get(treeiter, 0, 1)
+        _id = self.musiclist.get_item_id(path)
         item = self.idmap[_id]
-        #print _id, item
         self.open_item(item)
 
     def open_item(self, item):

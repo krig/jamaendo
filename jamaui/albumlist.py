@@ -7,7 +7,8 @@ except:
     import helldon as hildon
 import jamaendo
 import util
-from settings import settings
+import draw
+import colors
 from postoffice import postoffice
 import logging
 
@@ -24,6 +25,10 @@ class _BaseList(gtk.TreeView):
         self.__store = None
         self.default_pixbuf = util.find_resource('album.png')
         self.connect('destroy', self.on_destroy)
+        self.connect('expose-event', self.on_treeview_expose_event)
+        self.loading_message = "Loading..."
+        self.empty_message = "Empty."
+        self._is_loading = True
 
     def get_pixbuf(self, img):
         try:
@@ -47,6 +52,32 @@ class _BaseList(gtk.TreeView):
 
     def on_destroy(self, wnd):
         pass
+
+    def set_loading(self, loading):
+        self._is_loading = loading
+        self.queue_draw()
+
+    def on_treeview_expose_event(self, treeview, event):
+        if event.window == treeview.get_bin_window():
+            model = treeview.get_model()
+            if (model is not None and model.get_iter_first() is not None):
+                return False
+
+            ctx = event.window.cairo_create()
+            ctx.rectangle(event.area.x, event.area.y,
+                    event.area.width, event.area.height)
+            ctx.clip()
+            x, y, width, height, depth = event.window.get_geometry()
+
+            if self._is_loading:
+                text = self.loading_message
+            else:
+                text = self.empty_message
+
+            desc = colors.get_font_desc('LargeSystemFont')
+            draw.text_box_centered(ctx, treeview, width, height, text, desc)
+
+        return False
 
 class MusicList(_BaseList):
     def __init__(self):
@@ -191,6 +222,66 @@ class TrackList(_BaseList):
         treeiter = self.__store.get_iter(path)
         _, _, _id = self.__store.get(treeiter, 0, 1, 2)
         return _id
+
+
+class PlaylistList(_BaseList):
+    def __init__(self):
+        _BaseList.__init__(self)
+        (self.COL_ICON, self.COL_NAME, self.COL_INFO, self.COL_ID) = range(4)
+        self.__store = gtk.ListStore(gtk.gdk.Pixbuf, str, str, int)
+
+        self.set_model(self.__store)
+
+        icon = gtk.TreeViewColumn('Icon')
+        self.append_column(icon)
+        cell = gtk.CellRendererPixbuf()
+        icon.pack_start(cell, True)
+        icon.add_attribute(cell, 'pixbuf', self.COL_ICON)
+
+        col = gtk.TreeViewColumn('Name')
+        self.append_column(col)
+        cell = gtk.CellRendererText()
+        col.pack_start(cell, True)
+        col.add_attribute(cell, 'text', self.COL_NAME)
+
+        col = gtk.TreeViewColumn('Info')
+        self.append_column(col)
+        cell = gtk.CellRendererText()
+        cell.set_property('xalign', 1.0)
+        col.pack_start(cell, True)
+        col.add_attribute(cell, 'text', self.COL_INFO)
+
+        self.set_search_column(self.COL_NAME)
+        col.set_sort_column_id(self.COL_NAME)
+
+        postoffice.connect('album-cover', self, self.on_album_cover)
+
+    def on_destroy(self, wnd):
+        _BaseList.on_destroy(self, wnd)
+        postoffice.disconnect('album-cover', self)
+
+    def on_album_cover(self, albumid, size, cover):
+        if size == self.ICON_SIZE:
+            for row in self.__store:
+                if row[self.COL_ID] == albumid:
+                    row[self.COL_ICON] = self.get_pixbuf(cover)
+
+    def add_playlist(self, name, tracks):
+        def trackcount(lst):
+            ln = len(lst)
+            if ln > 1:
+                return "(%d tracks)"%(ln)
+            elif ln == 1:
+                return "(1 track)"
+            return "(empty)"
+        track = tracks[0] if len(tracks) else None
+        track_album_id = int(track['data']['album_id']) if track else 0
+        self.__store.append([self.get_default_pixbuf(), name, trackcount(tracks), track_album_id])
+        if track_album_id:
+            postoffice.notify('request-album-cover', track_album_id, self.ICON_SIZE)
+
+    def get_playlist_name(self, path):
+        return self.__store.get(self.__store.get_iter(path), self.COL_NAME)[0]
 
 class RadioList(_BaseList):
     def __init__(self):
