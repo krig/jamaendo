@@ -211,9 +211,12 @@ class PlayerWindow(hildon.StackableWindow):
     def set_labels(self, track, artist, album, playlist_pos, playlist_size):
 
         if self.playlist.radio_mode:
-            ppstr = '<span size="small">Radio: %s</span>'%(cgi.escape(self.playlist.radio_name))
+            ppstr = 'Radio: %s'%(cgi.escape(self.playlist.radio_name))
+        elif playlist_size > 0:
+            ppstr = 'Track %s of %s'%(int(playlist_pos)+1, playlist_size)
         else:
-            ppstr = '<span font_desc="%s" foreground="%s">Track %s of %s</span>'%(colors.SmallSystemFont(), colors.SecondaryTextColor(), int(playlist_pos)+1, playlist_size)
+            ppstr = "No playlist"
+        ppstr = '<span font_desc="%s" foreground="%s">%s</span>'%(colors.SmallSystemFont(), colors.SecondaryTextColor(), ppstr)
         self.playlist_pos.set_markup(ppstr)
         self.track.set_markup('<span font_desc="%s">%s</span>'%(colors.LargeSystemFont(), cgi.escape(track)))
         self.artist.set_markup('%s'%(cgi.escape(artist)))
