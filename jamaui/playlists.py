@@ -122,13 +122,20 @@ class PlaylistsWindow(hildon.StackableWindow):
         player.connect("clicked", on_player)
         self.menu.append(player)
         player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
-        player.set_label("Delete playlists")
-        player.connect("clicked", self.on_delete_playlists)
+        player.set_label("Manage playlists")
+        player.connect("clicked", self.on_manage_playlists)
+        self.menu.append(player)
+        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        player.set_label("Export...")
+        player.connect("clicked", self.on_export_playlists)
         self.menu.append(player)
         self.menu.show_all()
         self.set_app_menu(self.menu)
 
-    def on_delete_playlists(self, *args):
+    def on_manage_playlists(self, *args):
+        _show_banner(self, "TODOO")
+
+    def on_export_playlists(self, *args):
         _show_banner(self, "TODOO")
 
     def row_activated(self, treeview, path, view_column):
