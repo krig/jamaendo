@@ -240,23 +240,26 @@ _CACHED_COVERS = 2048
 
 # TODO: cache queries?
 
-class Query(object):
-    rate_limit = 1.1 # seconds between queries
+class Ratelimit(object):
+    rate_limit = 1.0 # seconds between queries
     last_query = time.time() - 1.5
 
     @classmethod
-    def _ratelimit(cls):
+    def ratelimit(cls):
         now = time.time()
-        if now - cls.last_query < cls.rate_limit:
+        if (now - cls.last_query) < cls.rate_limit:
             time.sleep(cls.rate_limit - (now - cls.last_query))
-        cls.last_query = now
+        cls.last_query = time.time()
 
+_ratelimit = Ratelimit.ratelimit
+
+class Query(object):
     def __init__(self):
         pass
 
     def _geturl(self, url):
+        _ratelimit()
         log.info("%s", url)
-        Query._ratelimit()
         try:
             ret = simplejson.loads(curlGET(url))
         except Exception, e:

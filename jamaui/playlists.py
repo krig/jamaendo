@@ -43,6 +43,8 @@ def _show_banner(parent, message, timeout = 2000):
     banner = hildon.hildon_banner_show_information(parent, '', message)
     banner.set_timeout(2000)
 
+show_banner = _show_banner
+
 from listbox import ListDialog
 
 def add_to_playlist(wnd, track):
@@ -121,14 +123,16 @@ class PlaylistsWindow(hildon.StackableWindow):
         player.set_label("Open player")
         player.connect("clicked", on_player)
         self.menu.append(player)
-        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
-        player.set_label("Manage playlists")
-        player.connect("clicked", self.on_manage_playlists)
-        self.menu.append(player)
-        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
-        player.set_label("Export...")
-        player.connect("clicked", self.on_export_playlists)
-        self.menu.append(player)
+        # bah, I haven't decided how I want to do this yet
+        # lets just hide it for now
+        #player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        #player.set_label("Manage playlists")
+        #player.connect("clicked", self.on_manage_playlists)
+        #self.menu.append(player)
+        #player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        #player.set_label("Export...")
+        #player.connect("clicked", self.on_export_playlists)
+        #self.menu.append(player)
         self.menu.show_all()
         self.set_app_menu(self.menu)
 

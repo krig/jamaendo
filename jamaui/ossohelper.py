@@ -71,13 +71,13 @@ def application_exit():
     """
     Osso application exit.
     """
-    if __osso_application__ is not None and __osso_context__ is not None:
-        try:
-            #__osso_application__.close()
-            __osso_context__.close()
-        except Exception, err:
-            __log.warning('application end could not be sent: %s' % err)
-        __log.debug('osso application end sent')
+    #if __osso_application__ is not None and __osso_context__ is not None:
+    #    try:
+    #        #__osso_application__.close()
+    #        __osso_context__.close()
+    #    except Exception, err:
+    #        __log.warning('application end could not be sent: %s' % err)
+    #    __log.debug('osso application end sent')
 # application_exit
 
 def application_top(app_name):

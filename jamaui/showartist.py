@@ -33,6 +33,7 @@ from albumlist import AlbumList
 from postoffice import postoffice
 import util
 import gobject
+from playlists import add_to_playlist, show_banner
 
 import logging
 
@@ -76,7 +77,8 @@ class ShowArtist(hildon.StackableWindow):
         self.add(top_hbox)
 
         try:
-            for album in jamaendo.get_albums(artist.ID):
+            self.albumlist = jamaendo.get_albums(artist.ID)
+            for album in self.albumlist:
                 self.albums.add_album(album)
         except jamaendo.JamendoAPIException:
             log.exception("Failed in get_albums(%s)"%(artist.ID))
@@ -85,6 +87,36 @@ class ShowArtist(hildon.StackableWindow):
 
         if self.artist.image:
             postoffice.notify('request-images', [self.artist.image])
+
+        self.create_menu()
+
+    def create_menu(self):
+        def on_player(*args):
+            from playerwindow import open_playerwindow
+            open_playerwindow()
+        self.menu = hildon.AppMenu()
+        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        player.set_label("Open player")
+        player.connect("clicked", on_player)
+        self.menu.append(player)
+        player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        player.set_label("Add to playlist")
+        player.connect("clicked", self.on_add_to_playlist)
+        self.menu.append(player)
+        self.menu.show_all()
+        self.set_app_menu(self.menu)
+
+    def on_add_to_playlist(self, button, user_data=None):
+        if self.albumlist:
+            try:
+                tracklist = []
+                for album in self.albumlist:
+                    tracklist.extend(jamaendo.get_tracks(album.ID))
+                add_to_playlist(self, tracklist)
+            except jamaendo.JamendoAPIException:
+                log.exception("Failed to get track list for artist %s", self.artist.ID)
+        else:
+            show_banner(self, "Error when opening track list")
 
     def get_pixbuf(self, img):
         try:
