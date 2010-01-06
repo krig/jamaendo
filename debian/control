@@ -11,7 +11,7 @@ Homepage: http://jamaendo.garage.maemo.org/
 Package: jamaendo
 Architecture: all
 Depends: ${python:Depends}, python2.5-gtk2, python2.5-gstreamer, python2.5-dbus, python2.5-hildon, python-lxml, python2.5-osso, python-pycurl
-Description: 
+Description: Streaming media player that plays music from jamendo.com
 XB-Maemo-Display-Name: Jamaendo Player
 XB-Maemo-Icon-26:
   iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAAAXNSR0IArs4c                                                          
