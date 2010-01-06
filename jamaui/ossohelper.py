@@ -62,7 +62,7 @@ def application_init(app_name, app_version):
             __log.warning('error creating osso application: %s' % err)
             __osso_application__ = None
 
-        __log.info( 'osso application init sent - %s v%s', app_name,
+        __log.debug( 'osso application init sent - %s v%s', app_name,
                     app_version)
         __osso_device_state__ = osso.DeviceState(__osso_context__)
 # application_init
@@ -73,11 +73,11 @@ def application_exit():
     """
     if __osso_application__ is not None and __osso_context__ is not None:
         try:
-            __osso_application__.close()
+            #__osso_application__.close()
             __osso_context__.close()
         except Exception, err:
             __log.warning('application end could not be sent: %s' % err)
-        __log.info('osso application end sent')
+        __log.debug('osso application end sent')
 # application_exit
 
 def application_top(app_name):

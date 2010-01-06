@@ -32,6 +32,9 @@ from showartist import ShowArtist
 from showalbum import ShowAlbum
 from albumlist import MusicList
 from player import Playlist
+import logging
+
+log = logging.getLogger(__name__)
 
 def _alist(l, match):
     for key, value in l:
@@ -65,10 +68,14 @@ class FeaturedWindow(hildon.StackableWindow):
         self.panarea.add(self.musiclist)
 
         self.idmap = {}
-        self.items = self.featurefn()
-        for item in self.items:
-            self.idmap[item.ID] = item
-        self.musiclist.add_items(self.items)
+        try:
+            self.items = self.featurefn()
+            for item in self.items:
+                self.idmap[item.ID] = item
+            self.musiclist.add_items(self.items)
+        except jamaendo.JamendoAPIException:
+            log.exception('failed to get %s' % (feature))
+            self.items = []
 
         self.add(self.panarea)
 
@@ -104,5 +111,9 @@ class FeaturedWindow(hildon.StackableWindow):
             wnd = open_playerwindow()
             wnd.play_tracks(playlist)
         elif isinstance(item, jamaendo.Tag):
-            wnd = open_playerwindow()
-            wnd.play_tracks(jamaendo.get_tag_tracks(item.ID))
+            try:
+                wnd = open_playerwindow()
+                wnd.play_tracks(jamaendo.get_tag_tracks(item.ID))
+            except jamaendo.JamendoAPIException:
+                log.exception('Failed to get tracks for %s' % (item.ID))
+

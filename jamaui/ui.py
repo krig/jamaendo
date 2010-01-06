@@ -131,7 +131,7 @@ class Jamaui(object):
             self.window.window.set_back_pixmap(background, False)
 
         bbox = gtk.HButtonBox()
-        alignment = gtk.Alignment(xalign=0.2, yalign=0.28, xscale=1.0)
+        alignment = gtk.Alignment(xalign=0.2, yalign=0.4, xscale=1.0)
         alignment.add(bbox)
         bbox.set_property('layout-style', gtk.BUTTONBOX_SPREAD)
         self.bbox = bbox

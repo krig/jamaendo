@@ -276,7 +276,7 @@ class PlayerWindow(hildon.StackableWindow):
 
 
         txt = '<span font_desc="%s" foreground="%s">%s</span>' % \
-            (colors.XLargeSystemFont(),
+            (colors.XXLargeSystemFont(),
              colors.SecondaryTextColor(),
              self.nanosecs_to_str(time_elapsed)
              )
