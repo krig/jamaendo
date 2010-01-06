@@ -1,0 +1,3 @@
+#!/bin/sh
+mogrify -path thumbs -thumbnail 200x120  -quality 95 -format png *.png
+

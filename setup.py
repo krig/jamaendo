@@ -26,10 +26,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from setuptools import setup, find_packages
+from distutils.core import setup
 from glob import glob
-import os
-import sys
 
 data_files = [
     ('/opt/jamaendo', glob('data/icon_*.png') + ['data/bg.png', 'data/album.png']),
@@ -45,15 +43,13 @@ data_files = [
 #    modir = os.path.dirname(mofile).replace('data', 'share')
 #    translation_files.append((modir, [mofile]))
 
-import sys
 setup(
     name = "jamaendo",
-    version = '0.1',
+    version = '0.2',
     author = "Kristoffer Gronlund",
     author_email = "kristoffer.gronlund@purplescout.se",
     url = "http://jamaendo.garage.maemo.org/",
     packages = ['jamaendo', 'jamaui'],
-    zip_safe=False,
     scripts = ['scripts/jamaendo'],
     data_files = data_files# + translation_files,
     )

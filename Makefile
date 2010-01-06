@@ -52,7 +52,7 @@ distclean: clean
 
 # See: http://wiki.maemo.org/Uploading_to_Extras#Debian_tooling
 build-package:
-	dpkg-buildpackage -rfakeroot -sa -i -I.git
+	dpkg-buildpackage -rfakeroot -sa -kkristoffer.gronlund@purplescout.se -i -I.git
 
 #messagespot:
 #	xgettext -k_ --from-code utf-8 --language Python \
