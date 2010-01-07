@@ -6,6 +6,7 @@ Standards-Version: 3.7.3
 Build-Depends: debhelper (>= 5.0.37.2), python2.5-dev
 XS-Python-Version: >= 2.5
 XB-Python-Version: ${python:Versions}
+XSBC-Bugtracker: https://garage.maemo.org/tracker/?group_id=1207
 Homepage: http://jamaendo.garage.maemo.org/
 
 Package: jamaendo
