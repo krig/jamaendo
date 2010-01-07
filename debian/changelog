@@ -1,3 +1,11 @@
+jamaendo (0.2-2) unstable; urgency=low
+
+  * Initial background loading support (search window)
+  * Fixed log append issue (/tmp is only 1MB)
+  * Added icon credits in about box
+
+ -- Kristoffer Grönlund <kristoffer.gronlund@purplescout.se>  Fri, 08 Jan 2010 00:39:20 +0100
+
 jamaendo (0.2-1) unstable; urgency=low
 
   * Second preview
