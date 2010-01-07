@@ -37,7 +37,7 @@ class PostOffice(object):
 
     def notify(self, tag, *data):
         with self.lock:
-            log.info("(%s %s)", tag, " ".join(str(x) for x in data))
+            #log.info("(%s %s)", tag, " ".join(str(x) for x in data))
             clients = self.tags.get(tag)
             if clients:
                 for ref, client in clients:
