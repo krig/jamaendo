@@ -30,7 +30,7 @@ LOG_LEVEL = logging.INFO
 LOG_FORMAT = "%(asctime)s %(name)-10s: [%(lineno)4d] %(levelname)-5s %(message)s"
 
 _rootlogger = logging.getLogger()
-_fhandler = logging.FileHandler(LOG_FILENAME)
+_fhandler = logging.FileHandler(LOG_FILENAME, mode='w')
 _shandler = logging.StreamHandler()
 _formatter = logging.Formatter(LOG_FORMAT)
 _fhandler.setFormatter(_formatter)

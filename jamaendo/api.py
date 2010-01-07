@@ -22,6 +22,7 @@
 
 # An improved, structured jamendo API wrapper for the N900 with cacheing
 # Image / cover downloads.. and more?
+from __future__ import with_statement
 import urllib, threading, os, time, simplejson, re
 import logging, hashlib
 import pycurl, StringIO
@@ -52,6 +53,8 @@ _ALBUM_FIELDS = ['id', 'name', 'image', 'artist_name', 'artist_id', 'license_url
 _TRACK_FIELDS = ['id', 'name', 'album_image', 'artist_id', 'artist_name', 'album_name', 'album_id', 'numalbum', 'duration']
 _RADIO_FIELDS = ['id', 'name', 'idstr', 'image']
 _TAG_FIELDS = ['id', 'name']
+
+_APILOCK = threading.Lock()
 
 def curlGET(url):
     c = pycurl.Curl()
@@ -469,13 +472,16 @@ def set_cache_dir(cachedir):
     _cover_cache.prime_cache()
 
 def get_album_cover(albumid, size=100):
-    return _cover_cache.get_cover(albumid, size)
+    with _APILOCK:
+        return _cover_cache.get_cover(albumid, size)
 
 def get_album_cover_async(cb, albumid, size=100):
-    _cover_cache.get_async(albumid, size, cb)
+    with _APILOCK:
+        _cover_cache.get_async(albumid, size, cb)
 
 def get_images_async(cb, url_list):
-    _cover_cache.get_images_async(url_list, cb)
+    with _APILOCK:
+        _cover_cache.get_images_async(url_list, cb)
 
 class CustomQuery(Query):
     def __init__(self, url):
@@ -630,271 +636,294 @@ def _update_cache(cache, new_items):
 
 def get_artist(artist_id):
     """Returns: Artist"""
-    a = _artists.get(artist_id, None)
-    if not a:
-        q = GetQuery('artist', artist_id)
-        a = q.execute()
+    with _APILOCK:
+        a = _artists.get(artist_id, None)
         if not a:
-            raise JamendoAPIException(str(q))
-        _update_cache(_artists, a)
-        if isinstance(a, list):
-            a = a[0]
-    return a
+            q = GetQuery('artist', artist_id)
+            a = q.execute()
+            if not a:
+                raise JamendoAPIException(str(q))
+            _update_cache(_artists, a)
+            if isinstance(a, list):
+                a = a[0]
+        return a
 
 def get_artists(artist_ids):
     """Returns: [Artist]"""
-    assert(isinstance(artist_ids, list))
-    found = []
-    lookup = []
-    for artist_id in artist_ids:
-        a = _artists.get(artist_id, None)
-        if not a:
-            lookup.append(artist_id)
-        else:
-            found.append(a)
-    if lookup:
-        q = GetQuery('artist_list', '+'.join(str(x) for x in lookup))
-        a = q.execute()
-        if not a:
-            raise JamendoAPIException(str(q))
-        _update_cache(_artists, a)
-        lookup = a
-    return found + lookup
+    with _APILOCK:
+        assert(isinstance(artist_ids, list))
+        found = []
+        lookup = []
+        for artist_id in artist_ids:
+            a = _artists.get(artist_id, None)
+            if not a:
+                lookup.append(artist_id)
+            else:
+                found.append(a)
+        if lookup:
+            q = GetQuery('artist_list', '+'.join(str(x) for x in lookup))
+            a = q.execute()
+            if not a:
+                raise JamendoAPIException(str(q))
+            _update_cache(_artists, a)
+            lookup = a
+        return found + lookup
 
 def get_album_list(album_ids):
     """Returns: [Album]"""
-    assert(isinstance(album_ids, list))
-    found = []
-    lookup = []
-    for album_id in album_ids:
-        a = _albums.get(album_id, None)
-        if not a:
-            lookup.append(album_id)
-        else:
-            found.append(a)
-    if lookup:
-        q = GetQuery('album_list', '+'.join(str(x) for x in lookup))
-        a = q.execute()
-        if not a:
-            raise JamendoAPIException(str(q))
-        _update_cache(_albums, a)
-        lookup = a
-    return found + lookup
+    with _APILOCK:
+        assert(isinstance(album_ids, list))
+        found = []
+        lookup = []
+        for album_id in album_ids:
+            a = _albums.get(album_id, None)
+            if not a:
+                lookup.append(album_id)
+            else:
+                found.append(a)
+        if lookup:
+            q = GetQuery('album_list', '+'.join(str(x) for x in lookup))
+            a = q.execute()
+            if not a:
+                raise JamendoAPIException(str(q))
+            _update_cache(_albums, a)
+            lookup = a
+        return found + lookup
 
 def get_albums(artist_id):
     """Returns: [Album]
     Parameter can either be an artist_id or a list of album ids.
     """
-    if isinstance(artist_id, list):
-        return get_album_list(artist_id)
-    a = _artists.get(artist_id, None)
-    if a and a.albums:
-        return a.albums
+    with _APILOCK:
+        if isinstance(artist_id, list):
+            return get_album_list(artist_id)
+        a = _artists.get(artist_id, None)
+        if a and a.albums:
+            return a.albums
 
-    q = GetQuery('albums', artist_id)
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_albums, a)
-    return a
-
-def get_album(album_id):
-    """Returns: Album"""
-    a = _albums.get(album_id, None)
-    if not a:
-        q = GetQuery('album', album_id)
+        q = GetQuery('albums', artist_id)
         a = q.execute()
         if not a:
             raise JamendoAPIException(str(q))
         _update_cache(_albums, a)
-        if isinstance(a, list):
-            a = a[0]
-    return a
+        return a
+
+def get_album(album_id):
+    """Returns: Album"""
+    with _APILOCK:
+        a = _albums.get(album_id, None)
+        if not a:
+            q = GetQuery('album', album_id)
+            a = q.execute()
+            if not a:
+                raise JamendoAPIException(str(q))
+            _update_cache(_albums, a)
+            if isinstance(a, list):
+                a = a[0]
+        return a
 
 def get_track_list(track_ids):
     """Returns: [Track]"""
-    assert(isinstance(track_ids, list))
-    found = []
-    lookup = []
-    for track_id in track_ids:
-        a = _tracks.get(track_id, None)
-        if not a:
-            lookup.append(track_id)
-        else:
-            found.append(a)
-    if lookup:
-        q = GetQuery('track_list', '+'.join(str(x) for x in lookup))
-        a = q.execute()
-        if not a:
-            raise JamendoAPIException(str(q))
-        _update_cache(_tracks, a)
-        lookup = a
-    return found + lookup
+    with _APILOCK:
+        assert(isinstance(track_ids, list))
+        found = []
+        lookup = []
+        for track_id in track_ids:
+            a = _tracks.get(track_id, None)
+            if not a:
+                lookup.append(track_id)
+            else:
+                found.append(a)
+        if lookup:
+            q = GetQuery('track_list', '+'.join(str(x) for x in lookup))
+            a = q.execute()
+            if not a:
+                raise JamendoAPIException(str(q))
+            _update_cache(_tracks, a)
+            lookup = a
+        return found + lookup
 
 def get_tracks(album_id):
     """Returns: [Track]
     Parameter can either be an album_id or a list of track ids.
     """
-    if isinstance(album_id, list):
-        return get_track_list(album_id)
-    a = _albums.get(album_id, None)
-    if a and a.tracks:
-        return a.tracks
+    with _APILOCK:
+        if isinstance(album_id, list):
+            return get_track_list(album_id)
+        a = _albums.get(album_id, None)
+        if a and a.tracks:
+            return a.tracks
 
-    q = GetQuery('tracks', album_id)
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_tracks, a)
-    return a
-
-def get_track(track_id):
-    """Returns: Track"""
-    a = _tracks.get(track_id, None)
-    if not a:
-        q = GetQuery('track', track_id)
+        q = GetQuery('tracks', album_id)
         a = q.execute()
         if not a:
             raise JamendoAPIException(str(q))
         _update_cache(_tracks, a)
-        if isinstance(a, list):
-            a = a[0]
-    return a
+        return a
+
+def get_track(track_id):
+    """Returns: Track"""
+    with _APILOCK:
+        a = _tracks.get(track_id, None)
+        if not a:
+            q = GetQuery('track', track_id)
+            a = q.execute()
+            if not a:
+                raise JamendoAPIException(str(q))
+            _update_cache(_tracks, a)
+            if isinstance(a, list):
+                a = a[0]
+        return a
 
 def get_radio_tracks(radio_id):
     """Returns: [Track]"""
-    q = GetQuery('radio', radio_id)
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_tracks, a)
-    return a
+    with _APILOCK:
+        q = GetQuery('radio', radio_id)
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_tracks, a)
+        return a
 
 #http://api.jamendo.com/get2/id+name/track/plain/?tag_id=327&n=50&order=rating_desc
 def get_tag_tracks(tag_id):
     """Returns: [Track]"""
-    q = GetQuery('tag', tag_id)
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_tracks, a)
-    return a
+    with _APILOCK:
+        q = GetQuery('tag', tag_id)
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_tracks, a)
+        return a
 
 def search_artists(query):
     """Returns: [Artist]"""
-    q = SearchQuery('artist', query, 'searchweight_desc')
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_artists, a)
-    return a
+    with _APILOCK:
+        q = SearchQuery('artist', query, 'searchweight_desc')
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_artists, a)
+        return a
 
 def search_albums(query):
     """Returns: [Album]"""
-    q = SearchQuery('album', query, 'searchweight_desc')
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_albums, a)
-    return a
+    with _APILOCK:
+        q = SearchQuery('album', query, 'searchweight_desc')
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_albums, a)
+        return a
 
 def search_tracks(query):
     """Returns: [Track]"""
-    q = SearchQuery('track', query=query, order='searchweight_desc')
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_tracks, a)
-    return a
+    with _APILOCK:
+        q = SearchQuery('track', query=query, order='searchweight_desc')
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_tracks, a)
+        return a
 
 def albums_of_the_week():
     """Returns: [Album]"""
-    q = SearchQuery('album', order='ratingweek_desc')
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_albums, a)
-    return a
+    with _APILOCK:
+        q = SearchQuery('album', order='ratingweek_desc')
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_albums, a)
+        return a
 
 def new_releases():
     """Returns: [Track] (playlist)"""
-    q = SearchQuery('track', order='releasedate_desc')
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_tracks, a)
-    return a
+    with _APILOCK:
+        q = SearchQuery('track', order='releasedate_desc')
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_tracks, a)
+        return a
 
 def tracks_of_the_week():
     """Returns: [Track] (playlist)"""
-    q = SearchQuery('track', order='ratingweek_desc')
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_tracks, a)
-    return a
+    with _APILOCK:
+        q = SearchQuery('track', order='ratingweek_desc')
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_tracks, a)
+        return a
 
 def top_artists(order='rating_desc', count=20):
     """Returns: [Artist]"""
-    q = SearchQuery('artist', order=order, count=count)
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_artists, a)
-    return a
+    with _APILOCK:
+        q = SearchQuery('artist', order=order, count=count)
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_artists, a)
+        return a
 
 def top_albums(order='rating_desc', count=20):
     """Returns: [Album]"""
-    q = SearchQuery('album', order=order, count=count)
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_albums, a)
-    return a
+    with _APILOCK:
+        q = SearchQuery('album', order=order, count=count)
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_albums, a)
+        return a
 
 def top_tracks(order='rating_desc', count=20):
     """Returns: [Track]"""
-    q = SearchQuery('track', order=order, count=count)
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_tracks, a)
-    return a
+    with _APILOCK:
+        q = SearchQuery('track', order=order, count=count)
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_tracks, a)
+        return a
 
 def get_radio(radio_id):
     """Returns: Radio"""
-    q = CustomQuery(_GET2+"id+name+idstr+image/radio/json?id=%d"%(radio_id))
-    js = q.execute()
-    if not js:
-        raise JamendoAPIException(str(q))
-    if isinstance(js, list):
-        ks = js[0]
-    return Radio(radio_id, json=js)
+    with _APILOCK:
+        q = CustomQuery(_GET2+"id+name+idstr+image/radio/json?id=%d"%(radio_id))
+        js = q.execute()
+        if not js:
+            raise JamendoAPIException(str(q))
+        if isinstance(js, list):
+            ks = js[0]
+        return Radio(radio_id, json=js)
 
 def starred_radios():
     """Returns: [Radio]"""
-    q = CustomQuery(_GET2+"id+name+idstr+image/radio/json?order=starred_desc")
-    js = q.execute()
-    if not js:
-        raise JamendoAPIException(str(q))
-    return [Radio(int(radio['id']), json=radio) for radio in js]
+    with _APILOCK:
+        q = CustomQuery(_GET2+"id+name+idstr+image/radio/json?order=starred_desc")
+        js = q.execute()
+        if not js:
+            raise JamendoAPIException(str(q))
+        return [Radio(int(radio['id']), json=radio) for radio in js]
 
 def top_tags(count=50, order='rating_desc'):
     """Returns: [Tag]"""
-    q = CustomQuery(_GET2+"id+name/tag/json?n=%d&order=%s"%(count, order))
-    js = q.execute()
-    if not js:
-        raise JamendoAPIException(str(q))
-    return [Tag(int(tag['id']), json=tag) for tag in js]
+    with _APILOCK:
+        q = CustomQuery(_GET2+"id+name/tag/json?n=%d&order=%s"%(count, order))
+        js = q.execute()
+        if not js:
+            raise JamendoAPIException(str(q))
+        return [Tag(int(tag['id']), json=tag) for tag in js]
 
 def favorite_albums(user):
     """Returns: [Album]"""
-    q = SearchQuery('favorite_albums', user=user, count=20)
-    a = q.execute()
-    if not a:
-        raise JamendoAPIException(str(q))
-    _update_cache(_albums, a)
-    return a
+    with _APILOCK:
+        q = SearchQuery('favorite_albums', user=user, count=20)
+        a = q.execute()
+        if not a:
+            raise JamendoAPIException(str(q))
+        _update_cache(_albums, a)
+        return a
 
 ### Set loader functions for classes
 

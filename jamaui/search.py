@@ -31,6 +31,7 @@ from playerwindow import open_playerwindow
 from showartist import ShowArtist
 from showalbum import ShowAlbum
 from albumlist import MusicList
+from fetcher import Fetcher
 
 class SearchWindow(hildon.StackableWindow):
     def __init__(self):
@@ -40,6 +41,8 @@ class SearchWindow(hildon.StackableWindow):
 
         vbox = gtk.VBox(False, 0)
 
+        self.fetcher = None
+        self.connect('destroy', self.on_destroy)
 
         # Results list
         self.panarea = hildon.PannableArea()
@@ -94,6 +97,11 @@ class SearchWindow(hildon.StackableWindow):
         self.menu.show_all()
         self.set_app_menu(self.menu)
 
+    def on_destroy(self, wnd):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+
     def mode_changed(self, selector, user_data):
         pass
         #current_selection = selector.get_current_text()
@@ -104,6 +112,26 @@ class SearchWindow(hildon.StackableWindow):
         self.musiclist.set_loading(False)
         self.musiclist.get_model().clear()
 
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+
+        itemgen = None
+        if mode == 0:
+            itemgen = lambda: jamaendo.search_artists(query=txt)
+        elif mode == 1:
+            itemgen = lambda: jamaendo.search_albums(query=txt)
+        elif mode == 2:
+            itemgen = lambda: jamaendo.search_tracks(query=txt)
+        else:
+            return
+
+        self.fetcher = Fetcher(itemgen, self,
+                               on_item = self.on_add_result,
+                               on_ok = self.on_add_ok,
+                               on_fail = self.on_add_fail)
+        self.fetcher.start()
+        '''
         try:
             if mode == 0:
                 items = jamaendo.search_artists(query=txt)
@@ -119,6 +147,23 @@ class SearchWindow(hildon.StackableWindow):
         except jamaendo.JamaendoAPIException:
             # nothing found, force redraw
             self.musiclist.queue_draw()
+        '''
+
+    def on_add_result(self, wnd, item):
+        if wnd is self:
+            self.musiclist.add_items([item])
+            self.idmap[item.ID] = item
+
+    def on_add_ok(self, wnd):
+        if wnd is self:
+            self.fetcher.stop()
+            self.fetcher = None
+
+    def on_add_fail(self, wnd, error):
+        if wnd is self:
+            self.musiclist.queue_draw()
+            self.fetcher.stop()
+            self.fetcher = None
 
     def row_activated(self, treeview, path, view_column):
         _id = self.musiclist.get_item_id(path)

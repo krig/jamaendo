@@ -23,38 +23,45 @@
 #
 # message central
 
+from __future__ import with_statement
 import logging
+import threading
 
 log = logging.getLogger(__name__)
 
 class PostOffice(object):
 
     def __init__(self):
+        self.lock = threading.RLock()
         self.tags = {} # tag -> [callback]
 
     def notify(self, tag, *data):
-        clients = self.tags.get(tag)
-        if clients:
-            for ref, client in clients:
-                client(*data)
+        with self.lock:
+            log.info("(%s %s)", tag, " ".join(str(x) for x in data))
+            clients = self.tags.get(tag)
+            if clients:
+                for ref, client in clients:
+                    client(*data)
 
     def connect(self, tag, ref, callback):
-        if not isinstance(tag, list):
-            tag = [tag]
-        for t in tag:
-            if t not in self.tags:
-                self.tags[t] = []
-            clients = self.tags[t]
-            if callback not in clients:
-                clients.append((ref, callback))
+        with self.lock:
+            if not isinstance(tag, list):
+                tag = [tag]
+            for t in tag:
+                if t not in self.tags:
+                    self.tags[t] = []
+                clients = self.tags[t]
+                if callback not in clients:
+                    clients.append((ref, callback))
 
     def disconnect(self, tag, ref):
-        if not isinstance(tag, list):
-            tag = [tag]
-        for t in tag:
-            if t not in self.tags:
-                self.tags[t] = []
-            self.tags[t] = [(_ref, cb) for _ref, cb in self.tags[t] if _ref != ref]
+        with self.lock:
+            if not isinstance(tag, list):
+                tag = [tag]
+            for t in tag:
+                if t not in self.tags:
+                    self.tags[t] = []
+                self.tags[t] = [(_ref, cb) for _ref, cb in self.tags[t] if _ref != ref]
 
 postoffice = PostOffice()
 

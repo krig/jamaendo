@@ -207,7 +207,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """)
         dialog.set_authors(("Kristoffer Gronlund <kristoffer.gronlund@purplescout.se>",
-                            "Based on Panucci, written by Thomas Perl <thpinfo.com>"))
+                            "Based on Panucci, written by Thomas Perl <thpinfo.com>",
+                            "Icons by Joseph Wain <http://glyphish.com/>"))
         dialog.set_comments("""Jamaendo plays music from the music catalog of JAMENDO.
 
 JAMENDO is an online platform that distributes musical works under Creative Commons licenses.""")
