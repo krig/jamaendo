@@ -34,6 +34,7 @@ from postoffice import postoffice
 import util
 import gobject
 from playlists import add_to_playlist, show_banner
+from fetcher import Fetcher
 
 import logging
 
@@ -47,6 +48,9 @@ class ShowArtist(hildon.StackableWindow):
         self.connect('destroy', self.on_destroy)
         self.set_title(artist.name)
         self.artist = artist
+
+        self.connect('destroy', self.on_destroy)
+        self.fetcher = None
 
         top_hbox = gtk.HBox()
         self.image = gtk.Image()
@@ -76,12 +80,7 @@ class ShowArtist(hildon.StackableWindow):
 
         self.add(top_hbox)
 
-        try:
-            self.albumlist = jamaendo.get_albums(artist.ID)
-            for album in self.albumlist:
-                self.albums.add_album(album)
-        except jamaendo.JamendoAPIException:
-            log.exception("Failed in get_albums(%s)"%(artist.ID))
+        self.albumlist = []
 
         postoffice.connect('images', self, self.on_images)
 
@@ -89,6 +88,32 @@ class ShowArtist(hildon.StackableWindow):
             postoffice.notify('request-images', [self.artist.image])
 
         self.create_menu()
+        self.start_album_fetcher()
+
+    def on_destroy(self, wnd):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+
+    def start_album_fetcher(self):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+        self.fetcher = Fetcher(lambda: jamaendo.get_albums(self.artist.ID), self,
+                               on_item = self.on_album_result,
+                               on_ok = self.on_album_complete,
+                               on_fail = self.on_album_complete)
+        self.fetcher.start()
+
+    def on_album_result(self, wnd, item):
+        if wnd is self:
+            self.albums.add_album(item)
+            self.albumlist.append(item)
+
+    def on_album_complete(self, wnd, error=None):
+        if wnd is self:
+            self.fetcher.stop()
+            self.fetcher = None
 
     def create_menu(self):
         def on_player(*args):

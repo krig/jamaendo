@@ -36,6 +36,7 @@ import util
 import logging
 from albumlist import TrackList
 from playlists import add_to_playlist
+from fetcher import fetcher
 
 import webbrowser
 
@@ -46,6 +47,7 @@ class ShowAlbum(hildon.StackableWindow):
         hildon.StackableWindow.__init__(self)
         self.set_title(album.artist_name)
         self.album = album
+        self.fetcher = None
 
         self.connect('destroy', self.on_destroy)
 
@@ -70,9 +72,10 @@ class ShowAlbum(hildon.StackableWindow):
         self.tracks = TrackList(numbers=True)
         self.tracks.connect('row-activated', self.row_activated)
 
-        self.tracklist = jamaendo.get_tracks(album.ID)
-        for track in self.tracklist:
-            self.tracks.add_track(track)
+        self.tracklist = []
+        #self.tracklist = jamaendo.get_tracks(album.ID)
+        #for track in self.tracklist:
+        # self.tracks.add_track(track)
 
         top_hbox.pack_start(vbox1, False)
         top_hbox.pack_start(vbox2, True)
@@ -92,6 +95,7 @@ class ShowAlbum(hildon.StackableWindow):
         postoffice.notify('request-album-cover', self.album.ID, 300)
 
         self.create_menu()
+        self.start_track_fetcher()
 
     def create_menu(self):
         def on_player(*args):
@@ -111,6 +115,29 @@ class ShowAlbum(hildon.StackableWindow):
 
     def on_destroy(self, wnd):
         postoffice.disconnect('album-cover', self)
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+
+    def start_track_fetcher(self):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+        self.fetcher = Fetcher(jamaendo.starred_radios, self,
+                               on_item = self.on_radio_result,
+                               on_ok = self.on_radio_complete,
+                               on_fail = self.on_radio_complete)
+        self.fetcher.start()
+
+    def on_track_result(self, wnd, item):
+        if wnd is self:
+            self.tracklist.append(item)
+            self.tracks.add_track(item)
+
+    def on_track_complete(self, wnd, error=None):
+        if wnd is self:
+            self.fetcher.stop()
+            self.fetcher = None
 
     def on_album_cover(self, albumid, size, cover):
         if albumid == self.album.ID and size == 300:
@@ -158,6 +185,7 @@ class ShowAlbum(hildon.StackableWindow):
         self.open_item(self.album)
 
     def row_activated(self, treeview, path, view_column):
+        # TODO: wait for all tracks to load
         _id = self.tracks.get_track_id(path)
         playlist = Playlist(self.tracklist)
         playlist.jump_to(_id)
