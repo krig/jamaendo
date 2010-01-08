@@ -36,7 +36,7 @@ import util
 import logging
 from albumlist import TrackList
 from playlists import add_to_playlist
-from fetcher import fetcher
+from fetcher import Fetcher
 
 import webbrowser
 
@@ -123,10 +123,10 @@ class ShowAlbum(hildon.StackableWindow):
         if self.fetcher:
             self.fetcher.stop()
             self.fetcher = None
-        self.fetcher = Fetcher(jamaendo.starred_radios, self,
-                               on_item = self.on_radio_result,
-                               on_ok = self.on_radio_complete,
-                               on_fail = self.on_radio_complete)
+        self.fetcher = Fetcher(lambda: jamaendo.get_tracks(self.album.ID), self,
+                               on_item = self.on_track_result,
+                               on_ok = self.on_track_complete,
+                               on_fail = self.on_track_complete)
         self.fetcher.start()
 
     def on_track_result(self, wnd, item):
