@@ -32,6 +32,7 @@ from showartist import ShowArtist
 from showalbum import ShowAlbum
 from albumlist import MusicList
 from player import Playlist
+from fetcher import Fetcher
 import logging
 
 log = logging.getLogger(__name__)
@@ -59,6 +60,8 @@ class FeaturedWindow(hildon.StackableWindow):
         hildon.StackableWindow.__init__(self)
         self.set_title(feature)
 
+        self.fetcher = None
+        self.connect('destroy', self.on_destroy)
         self.featurefn = _alist(self.features, feature)
 
         # Results list
@@ -68,18 +71,34 @@ class FeaturedWindow(hildon.StackableWindow):
         self.panarea.add(self.musiclist)
 
         self.idmap = {}
-        try:
-            self.items = self.featurefn()
-            for item in self.items:
-                self.idmap[item.ID] = item
-            self.musiclist.add_items(self.items)
-        except jamaendo.JamendoAPIException:
-            log.exception('failed to get %s' % (feature))
-            self.items = []
+        self.items = []
 
         self.add(self.panarea)
 
         self.create_menu()
+
+        self.start_feature_fetcher()
+
+    def start_feature_fetcher(self):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+        self.fetcher = Fetcher(self.featurefn, self,
+                               on_item = self.on_feature_result,
+                               on_ok = self.on_feature_complete,
+                               on_fail = self.on_feature_complete)
+        self.fetcher.start()
+
+    def on_feature_result(self, wnd, item):
+        if wnd is self:
+            self.musiclist.add_items([item])
+            self.idmap[item.ID] = item
+            self.items.append(item)
+
+    def on_feature_complete(self, wnd, error=None):
+        if wnd is self:
+            self.fetcher.stop()
+            self.fetcher = None
 
     def create_menu(self):
         def on_player(*args):
@@ -92,6 +111,11 @@ class FeaturedWindow(hildon.StackableWindow):
         self.menu.append(player)
         self.menu.show_all()
         self.set_app_menu(self.menu)
+
+    def on_destroy(self, wnd):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
 
     def row_activated(self, treeview, path, view_column):
         _id = self.musiclist.get_item_id(path)
@@ -111,9 +135,29 @@ class FeaturedWindow(hildon.StackableWindow):
             wnd = open_playerwindow()
             wnd.play_tracks(playlist)
         elif isinstance(item, jamaendo.Tag):
-            try:
+            self.start_tag_fetcher(item.ID)
+
+    def start_tag_fetcher(self, item_id):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+        self.fetcher = Fetcher(lambda: jamaendo.get_tag_tracks(item_id),
+                               self,
+                               on_item = self.on_tag_result,
+                               on_ok = self.on_tag_complete,
+                               on_fail = self.on_tag_complete)
+        self.fetcher.taglist = []
+        self.fetcher.start()
+
+    def on_tag_result(self, wnd, item):
+        if wnd is self and hasattr(self.fetcher, 'taglist'):
+            self.fetcher.taglist.append(item)
+
+    def on_tag_complete(self, wnd, error=None):
+        if wnd is self:
+            self.fetcher.stop()
+            if error is not None and hasattr(self.fetcher, 'taglist'):
                 wnd = open_playerwindow()
-                wnd.play_tracks(jamaendo.get_tag_tracks(item.ID))
-            except jamaendo.JamendoAPIException:
-                log.exception('Failed to get tracks for %s' % (item.ID))
+                wnd.play_tracks(self.fetcher.taglist)
+            self.fetcher = None
 

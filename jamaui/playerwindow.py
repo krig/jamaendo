@@ -108,6 +108,8 @@ class PlayerWindow(hildon.StackableWindow):
         self.add_stock_button(btns, gtk.STOCK_MEDIA_STOP, self.on_stop)
         self.add_stock_button(btns, gtk.STOCK_MEDIA_NEXT, self.on_next)
 
+        self.controls = btns
+
         self.add(vbox)
 
         postoffice.connect('album-cover', self, self.set_album_cover)
@@ -222,6 +224,14 @@ class PlayerWindow(hildon.StackableWindow):
         self.artist.set_markup('%s'%(cgi.escape(artist)))
         self.album.set_markup('<span foreground="%s">%s</span>'%(colors.SecondaryTextColor(), cgi.escape(album)))
 
+        if not track:
+            txt = '<span font_desc="%s" foreground="%s">%s</span>' % \
+                (colors.XXLargeSystemFont(),
+                 colors.SecondaryTextColor(),
+                 '00:00'
+                 )
+            self.playtime.set_markup(txt)
+
     def show_banner(self, message, timeout = 2000):
         banner = hildon.hildon_banner_show_information(self, '', message)
         banner.set_timeout(2000)
@@ -294,6 +304,7 @@ class PlayerWindow(hildon.StackableWindow):
     def update_state(self):
         item = self.playlist.current()
         if item:
+            hildon.hildon_gtk_window_set_progress_indicator(self, 0)
             if not item.name:
                 item.load()
             self.set_labels(item.name, item.artist_name, item.album_name,
@@ -303,6 +314,10 @@ class PlayerWindow(hildon.StackableWindow):
         else:
             self.set_labels('', '', '', 0, 0)
             self.set_default_cover()
+        state = bool(item)
+        for btn in self.controls:
+            if isinstance(btn, hildon.GtkButton):
+                btn.set_sensitive(state)
 
     def set_album_cover(self, albumid, size, cover):
         if size == 300:
@@ -316,12 +331,11 @@ class PlayerWindow(hildon.StackableWindow):
         playlist.radio_mode = True
         playlist.radio_name = radio_name
         playlist.radio_id = radio_id
-        playlist.add(jamaendo.get_radio_tracks(playlist.radio_id))
-        log.debug("Playing radio: %s", playlist)
+        hildon.hildon_gtk_window_set_progress_indicator(self, 1)
         self.__play_tracks(playlist)
-        log.debug("Playlist current: %s, playing? %s",
-                  playlist.current_index(),
-                  self.player.playing())
+        #log.debug("Playlist current: %s, playing? %s",
+        #          playlist.current_index(),
+        #          self.player.playing())
 
     def play_tracks(self, tracks):
         self.__play_tracks(tracks)

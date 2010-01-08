@@ -9,6 +9,7 @@ from postoffice import postoffice
 import jamaendo
 import logging
 
+import gtk
 import hildon
 
 log = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ class _Worker(threading.Thread):
             for item in self.generator():
                 self._post(item)
             self._post_ok()
-        except jamaendo.JamendoAPIError, e:
+        except jamaendo.JamendoAPIException, e:
             log.exception("Failed to fetch, id %s" % (self.owner))
             self._post_fail(e)
 
@@ -53,17 +54,20 @@ class Fetcher(object):
 
     def _on_ok_cb(self, i):
         self.on_ok(i)
-        hildon.hildon_gtk_window_set_progress_indicator(self.owner, 0)
+        if isinstance(self.owner, gtk.Window):
+            hildon.hildon_gtk_window_set_progress_indicator(self.owner, 0)
 
     def _on_fail_cb(self, i, e):
         self.on_fail(i, e)
-        hildon.hildon_gtk_window_set_progress_indicator(self.owner, 0)
+        if isinstance(self.owner, gtk.Window):
+            hildon.hildon_gtk_window_set_progress_indicator(self.owner, 0)
 
     def start(self):
         postoffice.connect('fetch', self, self._on_item_cb)
         postoffice.connect('fetch-ok', self, self._on_ok_cb)
         postoffice.connect('fetch-fail', self, self._on_fail_cb)
-        hildon.hildon_gtk_window_set_progress_indicator(self.owner, 1)
+        if isinstance(self.owner, gtk.Window):
+            hildon.hildon_gtk_window_set_progress_indicator(self.owner, 1)
         self.worker = _Worker(self.generator, self.owner)
         self.worker.start()
 

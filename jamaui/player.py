@@ -28,6 +28,7 @@ import dbus
 import jamaendo
 from settings import settings
 from postoffice import postoffice
+from fetcher import Fetcher
 
 log = logging.getLogger(__name__)
 
@@ -349,25 +350,84 @@ class Player(object):
         self.backend = PlayerBackend()
         self.backend.set_eos_callback(self._on_eos)
         self.playlist = Playlist()
+        self.fetcher = None # for refilling the radio
 
     def get_position_duration(self):
         return self.backend.get_position_duration()
+
+    def _play_track(self, track, notify='play'):
+        self.backend.play_url('mp3', track.mp3_url())
+        log.debug("playing %s", track)
+        postoffice.notify(notify, track)
+
+    def _refill_radio(self):
+        log.debug("Refilling radio %s", self.playlist)
+        #self.playlist.add(jamaendo.get_radio_tracks(self.playlist.radio_id))
+        self._start_radio_fetcher()
+
+    def _start_radio_fetcher(self):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+        self.fetcher = Fetcher(lambda: jamaendo.get_radio_tracks(self.playlist.radio_id),
+                               self,
+                               on_item = self._on_radio_result,
+                               on_ok = self._on_radio_complete,
+                               on_fail = self._on_radio_complete)
+        self.fetcher.has_no_results = True
+        self.fetcher.start()
+
+    def _on_radio_result(self, wnd, item):
+        if wnd is self:
+            self.playlist.add(item)
+            if not self.playing():
+                if self.fetcher.has_no_results:
+                    self.fetcher.has_no_results = False
+                    entry = self.playlist.next()
+                    self._play_track(entry)
+
+    def _on_radio_complete(self, wnd, error=None):
+        if wnd is self:
+            if error:
+                self.stop()
+            self.fetcher.stop()
+            self.fetcher = None
 
     def play(self, playlist = None):
         if playlist:
             self.playlist = playlist
         elif self.playlist is None:
             self.playlist = Playlist()
-        if self.playlist.size():
-            if self.playlist.current():
-                entry = self.playlist.current()
-                self.backend.play_url('mp3', entry.mp3_url())
-                log.debug("playing %s", entry)
-            elif self.playlist.has_next():
-                entry = self.playlist.next()
-                self.backend.play_url('mp3', entry.mp3_url())
-                log.debug("playing %s", entry)
-            postoffice.notify('play', entry)
+
+        if self.playlist.current():
+            entry = self.playlist.current()
+            self._play_track(entry)
+        elif self.playlist.has_next():
+            entry = self.playlist.next()
+            self._play_track(entry)
+        elif self.playlist.radio_mode:
+            self._refill_radio()
+            #self.play()
+
+    def next(self):
+        if self.playlist.has_next():
+            self.backend.stop(reset=False)
+            entry = self.playlist.next()
+            self._play_track(entry, notify='next')
+        elif self.playlist.radio_mode:
+            self._refill_radio()
+            #if self.playlist.has_next():
+            #    self.next()
+            #else:
+            #    self.stop()
+        else:
+            self.stop()
+
+    def prev(self):
+        if self.playlist.has_prev():
+            self.backend.stop(reset=False)
+            entry = self.playlist.prev()
+            self._play_track(entry, 'prev')
 
     def pause(self):
         self.backend.pause()
@@ -379,31 +439,6 @@ class Player(object):
 
     def playing(self):
         return self.backend.playing()
-
-    def next(self):
-        if self.playlist.has_next():
-            self.backend.stop(reset=False)
-            entry = self.playlist.next()
-            self.backend.play_url('mp3', entry.mp3_url())
-            log.debug("playing %s:%s", entry.ID, entry.name)
-            postoffice.notify('next', entry)
-        elif self.playlist.radio_mode:
-            log.debug("Refilling radio %s", self.playlist)
-            self.playlist.add(jamaendo.get_radio_tracks(self.playlist.radio_id))
-            if self.playlist.has_next():
-                self.next()
-            else:
-                self.stop()
-        else:
-            self.stop()
-
-    def prev(self):
-        if self.playlist.has_prev():
-            self.backend.stop(reset=False)
-            entry = self.playlist.prev()
-            self.backend.play_url('mp3', entry.mp3_url())
-            log.debug("playing %s", entry)
-            postoffice.notify('prev', entry)
 
     def _on_eos(self):
         self.next()

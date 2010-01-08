@@ -110,6 +110,7 @@ class SearchWindow(hildon.StackableWindow):
         mode = self.mode.get_active()
         txt = self.entry.get_text()
         self.musiclist.set_loading(False)
+        self.musiclist.empty_message = "Searching..."
         self.musiclist.get_model().clear()
 
         if self.fetcher:
@@ -128,8 +129,8 @@ class SearchWindow(hildon.StackableWindow):
 
         self.fetcher = Fetcher(itemgen, self,
                                on_item = self.on_add_result,
-                               on_ok = self.on_add_ok,
-                               on_fail = self.on_add_fail)
+                               on_ok = self.on_add_complete,
+                               on_fail = self.on_add_complete)
         self.fetcher.start()
         '''
         try:
@@ -154,13 +155,9 @@ class SearchWindow(hildon.StackableWindow):
             self.musiclist.add_items([item])
             self.idmap[item.ID] = item
 
-    def on_add_ok(self, wnd):
+    def on_add_complete(self, wnd, error=None):
         if wnd is self:
-            self.fetcher.stop()
-            self.fetcher = None
-
-    def on_add_fail(self, wnd, error):
-        if wnd is self:
+            self.musiclist.empty_message = "No matching results"
             self.musiclist.queue_draw()
             self.fetcher.stop()
             self.fetcher = None

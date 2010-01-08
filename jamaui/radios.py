@@ -29,40 +29,52 @@ except:
 import jamaendo
 from playerwindow import open_playerwindow
 from albumlist import RadioList
+from fetcher import Fetcher
 
 class RadiosWindow(hildon.StackableWindow):
     def __init__(self):
         hildon.StackableWindow.__init__(self)
+        self.fetcher = None
+        self.radios = {}
+
         self.set_title("Radios")
+        self.connect('destroy', self.on_destroy)
 
         # Results list
         self.panarea = hildon.PannableArea()
         self.radiolist = RadioList()
         self.radiolist.connect('row-activated', self.row_activated)
-
         self.panarea.add(self.radiolist)
-
-        self.radios = {}
-        hildon.hildon_gtk_window_set_progress_indicator(self, 1)
-        radios = jamaendo.starred_radios()
-        for item in radios:
-            self.radios[item.ID] = item
-        self.radiolist.add_radios(radios)
-        hildon.hildon_gtk_window_set_progress_indicator(self, 0)
-
         self.add(self.panarea)
 
-    def make_button(self, text, subtext, callback):
-        button = hildon.Button(gtk.HILDON_SIZE_FINGER_HEIGHT,
-                               hildon.BUTTON_ARRANGEMENT_VERTICAL)
-        button.set_text(text, subtext)
+        self.start_radio_fetcher()
 
-        if callback:
-            button.connect('clicked', callback)
-
-        return button
+    def on_destroy(self, wnd):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
 
     def row_activated(self, treeview, path, view_column):
         name, _id = self.radiolist.get_radio_id(path)
         wnd = open_playerwindow()
         wnd.play_radio(name, _id)
+
+    def start_radio_fetcher(self):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+        self.fetcher = Fetcher(jamaendo.starred_radios, self,
+                               on_item = self.on_radio_result,
+                               on_ok = self.on_radio_complete,
+                               on_fail = self.on_radio_complete)
+        self.fetcher.start()
+
+    def on_radio_result(self, wnd, item):
+        if wnd is self:
+            self.radios[item.ID] = item
+            self.radiolist.add_radios([item])
+
+    def on_radio_complete(self, wnd, error=None):
+        if wnd is self:
+            self.fetcher.stop()
+            self.fetcher = None
