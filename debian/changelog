@@ -1,3 +1,10 @@
+jamaendo (0.2.4-1) unstable; urgency=low
+
+  * Seeking support in player
+  * Fixed tag search
+
+ -- Kristoffer Grönlund <kristoffer.gronlund@purplescout.se>  Sat, 09 Jan 2010 16:17:44 +0100
+
 jamaendo (0.2-3) unstable; urgency=low
 
   * Background loading support
