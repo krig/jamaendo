@@ -11,7 +11,11 @@ import logging
 
 import gobject
 import gtk
-import hildon
+
+try:
+    import hildon
+except:
+    import helldon as hildon
 
 log = logging.getLogger(__name__)
 
