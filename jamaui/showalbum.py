@@ -145,7 +145,6 @@ class ShowAlbum(hildon.StackableWindow):
         if albumid == self.album.ID and size == 300:
             self.cover.set_from_file(cover)
 
-
     def on_add_to_playlist(self, button, user_data=None):
         add_to_playlist(self, self.tracklist)
 

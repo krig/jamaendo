@@ -47,7 +47,7 @@ class PlayerWindow(hildon.StackableWindow):
 
     def __init__(self):
         hildon.StackableWindow.__init__(self)
-        self.set_title("jamaendo")
+        self.set_title("Jamaendo")
 
         PlayerWindow.instance = self
 
@@ -122,27 +122,35 @@ class PlayerWindow(hildon.StackableWindow):
     def create_menu(self):
         self.menu = hildon.AppMenu()
 
-        def to_artist(*args):
+        def to_artist():
             from showartist import ShowArtist
-            track = self.playlist.current()
-            artist = jamaendo.get_artist(int(track.artist_id))
-            wnd = ShowArtist(artist)
-            wnd.show_all()
-        def to_album(*args):
+            try:
+                hildon.hildon_gtk_window_set_progress_indicator(self, 1)
+                track = self.playlist.current()
+                artist = jamaendo.get_artist(int(track.artist_id))
+                wnd = ShowArtist(artist)
+                wnd.show_all()
+            finally:
+                hildon.hildon_gtk_window_set_progress_indicator(self, 0)
+        def to_album():
             from showalbum import ShowAlbum
-            track = self.playlist.current()
-            album = jamaendo.get_album(int(track.album_id))
-            wnd = ShowAlbum(album)
-            wnd.show_all()
+            try:
+                hildon.hildon_gtk_window_set_progress_indicator(self, 1)
+                track = self.playlist.current()
+                album = jamaendo.get_album(int(track.album_id))
+                wnd = ShowAlbum(album)
+                wnd.show_all()
+            finally:
+                hildon.hildon_gtk_window_set_progress_indicator(self, 0)
 
         b = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
         b.set_label("Artist")
-        b.connect("clicked", to_artist)
+        b.connect("clicked", lambda w: gobject.idle_add(to_artist))
         self.menu.append(b)
 
         b = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
         b.set_label("Album")
-        b.connect("clicked", to_album)
+        b.connect("clicked", lambda w: gobject.idle_add(to_album))
         self.menu.append(b)
 
         b = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
