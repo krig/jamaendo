@@ -1,0 +1,9 @@
+#!/usr/bin/env python
+
+def get_version():
+    from subprocess import Popen, PIPE
+    p1 = Popen("grep -m 1 VERSION jamaui/ui.py".split(), stdout=PIPE)
+    p2 = Popen("cut -d ' -f 2".split(), stdin=p1.stdout, stdout=PIPE)
+    return p2.communicate()[0].strip()
+
+print get_version()

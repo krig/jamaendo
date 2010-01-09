@@ -29,6 +29,11 @@
 from distutils.core import setup
 from glob import glob
 
+def version():
+    from subprocess import Popen, PIPE
+    p1 = Popen("./version".split(), stdout=PIPE)
+    return p1.communicate()[0].strip()
+
 data_files = [
     ('/opt/jamaendo', glob('data/icon_*.png') + ['data/bg.png', 'data/album.png']),
     ('share/applications/hildon', ['data/jamaendo.desktop']),
@@ -45,7 +50,7 @@ data_files = [
 
 setup(
     name = "jamaendo",
-    version = '0.2',
+    version = version(),
     author = "Kristoffer Gronlund",
     author_email = "kristoffer.gronlund@purplescout.se",
     url = "http://jamaendo.garage.maemo.org/",
