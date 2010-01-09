@@ -34,6 +34,8 @@ from settings import settings
 from postoffice import postoffice
 import util
 import logging
+import thread
+import gobject
 from albumlist import TrackList
 from playlists import add_to_playlist
 from fetcher import Fetcher
@@ -160,8 +162,19 @@ class ShowAlbum(hildon.StackableWindow):
         return btn
 
     def on_goto_artist(self, btn):
-        artist = jamaendo.get_artist(int(self.album.artist_id))
-        self.open_item(artist)
+        def threadfun(wnd, artist_id):
+            try:
+                artist = jamaendo.get_artist(artist_id)
+                def oncomplete(wnd, artist):
+                    wnd.open_item(artist)
+                    hildon.hildon_gtk_window_set_progress_indicator(wnd, 0)
+                gobject.idle_add(oncomplete, wnd, artist)
+            except:
+                def onfail(wnd):
+                    hildon.hildon_gtk_window_set_progress_indicator(wnd, 0)
+                gobject.idle_add(onfail, wnd)
+        hildon.hildon_gtk_window_set_progress_indicator(self, 1)
+        thread.start_new_thread(threadfun, (self, int(self.album.artist_id)))
 
     def on_download(self, btn):
         banner = hildon.hildon_banner_show_information(self, '', "Opening in web browser")

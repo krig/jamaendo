@@ -91,6 +91,7 @@ class ShowArtist(hildon.StackableWindow):
         self.start_album_fetcher()
 
     def on_destroy(self, wnd):
+        postoffice.disconnect('images', self)
         if self.fetcher:
             self.fetcher.stop()
             self.fetcher = None
@@ -131,15 +132,45 @@ class ShowArtist(hildon.StackableWindow):
         self.menu.show_all()
         self.set_app_menu(self.menu)
 
+    def start_addpl_fetcher(self):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+        def fetchgen():
+            for album in self.albumlist:
+                yield jamaendo.get_tracks(album.ID)
+            raise StopIteration
+        self.fetcher = Fetcher(fetchgen, self,
+                               on_item = self.on_addpl_result,
+                               on_ok = self.on_addpl_complete,
+                               on_fail = self.on_addpl_complete)
+        self.fetcher.tracklist = []
+        self.fetcher.pdlg = gtk.Dialog("Fetching album tracks", self)
+        self.fetcher.pbar = gtk.ProgressBar()
+        self.fetcher.pbar.set_fraction(0)
+        self.fetcher.pdlg.vbox.add(self.fetcher.pbar)
+        self.fetcher.pdlg.show_all()
+        self.fetcher.ppos = 1
+        self.fetcher.start()
+
+    def on_addpl_result(self, wnd, items):
+        if wnd is self:
+            self.fetcher.tracklist.extend(items)
+            self.fetcher.ppos += 1
+            self.fetcher.pbar.set_fraction(float(self.fetcher.ppos)/float(len(self.albumlist)+1))
+
+    def on_addpl_complete(self, wnd, error=None):
+        if wnd is self:
+            self.fetcher.stop()
+            self.fetcher.pdlg.destroy()
+            if self.fetcher.tracklist:
+                add_to_playlist(self, self.fetcher.tracklist)
+            self.fetcher = None
+
+
     def on_add_to_playlist(self, button, user_data=None):
         if self.albumlist:
-            try:
-                tracklist = []
-                for album in self.albumlist:
-                    tracklist.extend(jamaendo.get_tracks(album.ID))
-                add_to_playlist(self, tracklist)
-            except jamaendo.JamendoAPIException:
-                log.exception("Failed to get track list for artist %s", self.artist.ID)
+            self.start_addpl_fetcher()
         else:
             show_banner(self, "Error when opening track list")
 
@@ -170,15 +201,37 @@ class ShowArtist(hildon.StackableWindow):
                 if pb:
                     self.image.set_from_pixbuf(pb)
 
-    def on_destroy(self, wnd):
-        postoffice.disconnect('images', self)
+    def start_albumplay_fetcher(self, ID):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+        def albumgen():
+            yield jamaendo.get_album(ID)
+            raise StopIteration
+        self.fetcher = Fetcher(albumgen, self,
+                               on_item = self.on_albumplay_result,
+                               on_ok = self.on_albumplay_complete,
+                               on_fail = self.on_albumplay_complete)
+        self.fetcher.album = None
+        self.fetcher.start()
+
+    def on_albumplay_result(self, wnd, item):
+        if wnd is self:
+            if isinstance(item, list):
+                self.fetcher.album = item[0]
+            else:
+                self.fetcher.album = item
+
+    def on_albumplay_complete(self, wnd, error=None):
+        if wnd is self:
+            self.fetcher.stop()
+            if self.fetcher.album:
+                self.open_item(self.fetcher.album)
+            self.fetcher = None
 
     def row_activated(self, treeview, path, view_column):
         _id = self.albums.get_album_id(path)
-        album = jamaendo.get_album(_id)
-        if isinstance(album, list):
-            album = album[0]
-        self.open_item(album)
+        self.start_albumplay_fetcher(_id)
 
     def open_item(self, item):
         if isinstance(item, jamaendo.Album):

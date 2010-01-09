@@ -286,7 +286,9 @@ JAMENDO is an online platform that distributes musical works under Creative Comm
         self.create_menu()
         self.setup_widgets()
         self.window.show_all()
+        gtk.gdk.threads_enter()
         gtk.main()
+        gtk.gdk.threads_leave()
         ossohelper.application_exit()
 
 if __name__=="__main__":

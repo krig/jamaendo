@@ -694,9 +694,9 @@ def get_albums(artist_id):
     """Returns: [Album]
     Parameter can either be an artist_id or a list of album ids.
     """
+    if isinstance(artist_id, list):
+        return get_album_list(artist_id)
     with _APILOCK:
-        if isinstance(artist_id, list):
-            return get_album_list(artist_id)
         a = _artists.get(artist_id, None)
         if a and a.albums:
             return a.albums
@@ -747,9 +747,9 @@ def get_tracks(album_id):
     """Returns: [Track]
     Parameter can either be an album_id or a list of track ids.
     """
+    if isinstance(album_id, list):
+        return get_track_list(album_id)
     with _APILOCK:
-        if isinstance(album_id, list):
-            return get_track_list(album_id)
         a = _albums.get(album_id, None)
         if a and a.tracks:
             return a.tracks

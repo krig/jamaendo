@@ -21,7 +21,6 @@
 #  Copyright (c) 2008-05-26 Thomas Perl <thpinfo.com>
 #  (based on http://pygstdocs.berlios.de/pygst-tutorial/seeking.html)
 #
-import gtk
 try:
     import hildon
 except:
@@ -32,8 +31,10 @@ from showartist import ShowArtist
 from showalbum import ShowAlbum
 from settings import settings
 import logging
+from fetcher import Fetcher
+import itertools
 
-from albumlist import AlbumList
+from albumlist import MusicList
 
 log = logging.getLogger(__name__)
 
@@ -47,51 +48,66 @@ class FavoritesWindow(hildon.StackableWindow):
     def __init__(self):
         hildon.StackableWindow.__init__(self)
         self.set_title("Favorites")
+        self.connect('destroy', self.on_destroy)
+        self.fetcher = None
+        self.idmap = {}
 
-        if settings.user:
-            # Results list
-            self.panarea = hildon.PannableArea()
-            self.results = AlbumList()
-            self.results.connect('row-activated', self.row_activated)
-            self.panarea.add(self.results)
+        self.panarea = hildon.PannableArea()
+        self.favorites = MusicList()
+        self.favorites.connect('row-activated', self.row_activated)
+        self.panarea.add(self.favorites)
+        self.add(self.panarea)
 
-            self.idmap = {}
-
-            def add_album(ID, album_factory):
-                if ID not in self.idmap:
-                    album = album_factory()
-                    self.idmap[ID] = album
-                    self.results.add_album(album)
-
-            try:
-                for item in jamaendo.favorite_albums(settings.user):
-                    add_album(item.ID, lambda: item)
-            except jamaendo.JamendoAPIException, e:
-                msg = "Query failed, is the user name '%s' correct?" % (settings.user)
-                banner = hildon.hildon_banner_show_information(self, '',
-                                                               msg)
-                banner.set_timeout(3000)
-
-            favorite_albums = [f[1] for f in settings.favorites if isinstance(f, tuple) and len(f) == 2 and f[0] == 'album' and f[1] not in self.idmap]
-            try:
-                for album in jamaendo.get_albums(favorite_albums):
-                    add_album(album.ID, lambda: album)
-
-            except jamaendo.JamendoAPIException, e:
-                log.exception("jamaendo.get_albums(%s)"%(favorite_albums))
-
-            self.add(self.panarea)
-
+        if not settings.user:
+            self.favorites.loading_message = """give your username
+to the settings dialog
+favorites appear
+"""
         else:
-            vbox = gtk.VBox()
-            lbl = gtk.Label()
-            lbl.set_markup("""<span size="xx-large">jamendo.com
-in the settings dialog
-enter your username</span>
-""")
-            lbl.set_single_line_mode(False)
-            vbox.pack_start(lbl, True, False)
-            self.add(vbox)
+            self.favorites.loading_message = """Loading favorites"""
+
+        self.start_favorites_fetcher()
+
+    def on_destroy(self, wnd):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+
+    def start_favorites_fetcher(self):
+        if self.fetcher:
+            self.fetcher.stop()
+            self.fetcher = None
+
+        def gen():
+            generated = []
+            for item in jamaendo.favorite_albums(settings.user):
+                generated.append(item.ID)
+                yield item
+            fav = [f[1] for f in settings.favorites \
+                       if isinstance(f, tuple) and \
+                       len(f) == 2 and \
+                       f[0] == 'album' and \
+                       f[1] not in generated]
+            for item in jamaendo.get_albums(fav):
+                yield item
+
+        self.fetcher = Fetcher(gen,
+                               self,
+                               on_item = self.on_favorites_result,
+                               on_ok = self.on_favorites_complete,
+                               on_fail = self.on_favorites_complete)
+        self.fetcher.start()
+
+    def on_favorites_result(self, wnd, item):
+        if wnd is self:
+            if item.ID not in self.idmap:
+                self.idmap[item.ID] = item
+                self.favorites.add_items([item])
+
+    def on_favorites_complete(self, wnd, error=None):
+        if wnd is self:
+            self.fetcher.stop()
+            self.fetcher = None
 
     def get_item_text(self, item):
         if isinstance(item, jamaendo.Album):
@@ -101,25 +117,11 @@ enter your username</span>
         else:
             return item.name
 
-    def make_button(self, text, subtext, callback):
-        button = hildon.Button(gtk.HILDON_SIZE_FINGER_HEIGHT,
-                               hildon.BUTTON_ARRANGEMENT_VERTICAL)
-        button.set_text(text, subtext)
-
-        if callback:
-            button.connect('clicked', callback)
-
-        #image = gtk.image_new_from_stock(gtk.STOCK_INFO, gtk.ICON_SIZE_BUTTON)
-        #button.set_image(image)
-        #button.set_image_position(gtk.POS_RIGHT)
-
-        return button
-
     def row_activated(self, treeview, path, view_column):
-        _id = self.results.get_album_id(path)
-        item = self.idmap[_id]
-        #print _id, item
-        self.open_item(item)
+        _id = self.favorites.get_item_id(path)
+        item = self.idmap.get(_id)
+        if item:
+            self.open_item(item)
 
     def open_item(self, item):
         if isinstance(item, jamaendo.Album):

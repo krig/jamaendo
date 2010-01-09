@@ -9,6 +9,7 @@ from postoffice import postoffice
 import jamaendo
 import logging
 
+import gobject
 import gtk
 import hildon
 
@@ -22,13 +23,19 @@ class _Worker(threading.Thread):
         self.owner = owner
 
     def _post(self, item):
-        postoffice.notify("fetch", self.owner, item)
+        def idle_fetch(owner, item):
+            postoffice.notify("fetch", owner, item)
+        gobject.idle_add(idle_fetch, self.owner, item)
 
     def _post_ok(self):
-        postoffice.notify("fetch-ok", self.owner)
+        def idle_fetch_ok(owner):
+            postoffice.notify("fetch-ok", owner)
+        gobject.idle_add(idle_fetch_ok, self.owner)
 
     def _post_fail(self, e):
-        postoffice.notify("fetch-fail", self.owner, e)
+        def idle_fetch_fail(owner, e):
+            postoffice.notify("fetch-fail", owner, e)
+        gobject.idle_add(idle_fetch_fail, self.owner, e)
 
     def run(self):
         try:
