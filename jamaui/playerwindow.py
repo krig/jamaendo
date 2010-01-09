@@ -80,6 +80,7 @@ class PlayerWindow(hildon.StackableWindow):
         self.playtime.set_alignment(1,0)
         self.playtime.set_ellipsize(pango.ELLIPSIZE_END)
         self.progress = SongPosition()
+        self.progress.connect('button-press-event', self.on_progress_clicked)
 
         self.set_labels('', '', '', 0, 0)
 
@@ -89,8 +90,8 @@ class PlayerWindow(hildon.StackableWindow):
         vbox2.pack_start(self.track, True)
         vbox2.pack_start(self.artist, True)
         vbox2.pack_start(self.album, True)
-        vbox2.pack_start(self.playtime, False, True)
         vbox2.pack_start(self.progress, False, True)
+        vbox2.pack_start(self.playtime, False, True)
 
         hbox.set_border_width(8)
         hbox.pack_start(self.cover, False, True, 8)
@@ -257,6 +258,11 @@ class PlayerWindow(hildon.StackableWindow):
             settings.volume = 0
         else:
             settings.volume = widget.get_level()/100.0
+
+    def on_progress_clicked(self, widget, event):
+        w = widget.allocation.width
+        if w > 0:
+            the_player.seek(percent=float(event.x)/float(w))
 
     def on_position_timeout(self):
         if the_player.playing():

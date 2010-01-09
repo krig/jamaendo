@@ -11,6 +11,7 @@ class SongPosition(gtk.DrawingArea):
 
     def __init__(self):
         gtk.DrawingArea.__init__(self)
+        self.add_events(gtk.gdk.BUTTON_PRESS_MASK)
         self.connect('expose-event', self.on_expose)
         self.set_size_request(int(self.WIDTH), int(self.HEIGHT))
         self.pos = 0.0

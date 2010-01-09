@@ -48,6 +48,8 @@ class _Player(object):
         raise NotImplemented
     def stop(self):
         raise NotImplemented
+    def seek(self, nanoseconds=None, percent=None):
+        raise NotImplemented
     def set_eos_callback(self, cb):
         raise NotImplemented
 
@@ -184,6 +186,24 @@ class GStreamer(_Player):
         if self.player is not None:
             self.filesrc.set_property(self.filesrc_property, uri)
             log.info("%s", uri)
+
+    def seek(self, nanoseconds=None, percent=None):
+        """if nanoseconds, seek nanoseconds from now
+        if percent, seek percent from start of file
+        """
+        try:
+            position, duration = self.get_position_duration()
+            if not (position or duration) or self.get_state() == 'stopped':
+                return
+            if nanoseconds is not None:
+                position = max(0, min(position+nanoseconds, duration))
+            elif percent is not None:
+                position = int(duration*percent)
+            else:
+                return
+            self.player.seek_simple(self.time_format, gst.SEEK_FLAG_FLUSH, position)
+        except Exception, e:
+            log.exception( 'Error seeking' )
 
     def _on_message(self, bus, message):
         t = message.type
@@ -439,6 +459,9 @@ class Player(object):
 
     def playing(self):
         return self.backend.playing()
+
+    def seek(self, nanoseconds=None, percent=None):
+        self.backend.seek(nanoseconds=nanoseconds, percent=percent)
 
     def _on_eos(self):
         self.next()

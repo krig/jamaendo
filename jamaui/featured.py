@@ -148,16 +148,22 @@ class FeaturedWindow(hildon.StackableWindow):
                                on_fail = self.on_tag_complete)
         self.fetcher.taglist = []
         self.fetcher.start()
+        banner = hildon.hildon_banner_show_information(self, '', "Getting tracks for tag")
+        banner.set_timeout(2000)
 
     def on_tag_result(self, wnd, item):
-        if wnd is self and hasattr(self.fetcher, 'taglist'):
+        if wnd is self:
             self.fetcher.taglist.append(item)
 
     def on_tag_complete(self, wnd, error=None):
         if wnd is self:
+            taglist = self.fetcher.taglist
             self.fetcher.stop()
-            if error is not None and hasattr(self.fetcher, 'taglist'):
+            if not error:
                 wnd = open_playerwindow()
-                wnd.play_tracks(self.fetcher.taglist)
+                wnd.play_tracks(taglist)
+            else:
+                banner = hildon.hildon_banner_show_information(self, '', "Error getting tracks")
+                banner.set_timeout(2000)
             self.fetcher = None
 
