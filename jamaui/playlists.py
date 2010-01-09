@@ -30,6 +30,7 @@ import jamaendo
 from settings import settings
 import logging
 from albumlist import PlaylistList
+from postoffice import postoffice
 
 log = logging.getLogger(__name__)
 
@@ -100,19 +101,29 @@ class PlaylistsWindow(hildon.StackableWindow):
     def __init__(self):
         hildon.StackableWindow.__init__(self)
         self.set_title("Playlists")
+        self.connect('destroy', self.on_destroy)
+
+        #self.deltoolbar = hildon.EditToolbar("Choose playlists to delete", "Delete")
+        #self.set_edit_toolbar(self.deltoolbar)
+        #self.deltoolbar.connect("button-clicked", self.on_delete_button)
+        #self.deltoolbar.connect_swapped("arrow-clicked", gtk.widget_destroy, window)
 
         self.panarea = hildon.PannableArea()
         self.playlistlist = PlaylistList()
-        self.playlistlist.empty_message = "No playlists"
+        self.playlistlist.loading_message = "Loading playlists"
+        self.playlistlist.empty_message = "No playlists found"
         self.playlistlist.connect('row-activated', self.row_activated)
         self.panarea.add(self.playlistlist)
         self.add(self.panarea)
 
-        for key, lst in sorted(list(settings.playlists.iteritems())):
-            self.playlistlist.add_playlist(key, lst)
-        self.playlistlist.set_loading(False)
+        self.populate()
 
         self.create_menu()
+
+        postoffice.connect('settings-changed', self, self.settings_changed)
+
+    def on_destroy(self, wnd):
+        postoffice.disconnect('settings-changed', self)
 
     def create_menu(self):
         def on_player(*args):
@@ -123,6 +134,12 @@ class PlaylistsWindow(hildon.StackableWindow):
         player.set_label("Open player")
         player.connect("clicked", on_player)
         self.menu.append(player)
+
+        #player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        #player.set_label("Delete playlists")
+        #player.connect("clicked", self.on_delete_playlists)
+        #self.menu.append(player)
+
         # bah, I haven't decided how I want to do this yet
         # lets just hide it for now
         #player = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
@@ -136,16 +153,35 @@ class PlaylistsWindow(hildon.StackableWindow):
         self.menu.show_all()
         self.set_app_menu(self.menu)
 
-    def on_manage_playlists(self, *args):
-        _show_banner(self, "TODOO")
+    def populate(self):
+        for key, lst in sorted(list(settings.playlists.iteritems())):
+            self.playlistlist.add_playlist(key, lst)
+        self.playlistlist.set_loading(False)
 
-    def on_export_playlists(self, *args):
-        _show_banner(self, "TODOO")
+    def settings_changed(self, setting, *args):
+        if setting == 'playlists':
+            self.playlistlist.set_loading(True)
+            self.playlistlist.get_model().clear()
+            self.populate()
+
+    #def on_delete_playlists(self, *args):
+    #    self.deltoolbar.show()
+    #    self.playlistlist.set_hildon_ui_mode(hildon.UI_MODE_EDIT)
+
+    #def on_delete_button(self, btn):
+    #    pass
+
+    #def on_export_playlists(self, *args):
+    #    _show_banner(self, "TODOO")
+
 
     def row_activated(self, treeview, path, view_column):
         sel = self.playlistlist.get_playlist_name(path)
         pl = settings.get_playlist(sel)
         if pl:
-            from playerwindow import open_playerwindow
-            wnd = open_playerwindow()
-            wnd.play_tracks(pl)
+            from showplaylist import ShowPlaylist
+            wnd = ShowPlaylist(sel, pl)
+            wnd.show_all()
+            #from playerwindow import open_playerwindow
+            #wnd = open_playerwindow()
+            #wnd.play_tracks(pl)

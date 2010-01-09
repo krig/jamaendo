@@ -77,6 +77,11 @@ class Settings(object):
         postoffice.notify('settings-changed', 'playlists', self.playlists)
         log.debug("playlists is now %s", self.playlists)
 
+    def delete_playlist(self, name):
+        if name in self.playlists:
+            del self.playlists[name]
+            postoffice.notify('settings-changed', 'playlists', self.playlists)
+
     def load(self):
         if not os.path.isfile(self.__savename):
             return
