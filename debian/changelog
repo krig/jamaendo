@@ -1,3 +1,12 @@
+jamaendo (0.2-3) unstable; urgency=low
+
+  * Background loading support
+  * Fixed missing package dependency
+  * Playlist removal supported
+  * Bugfixes and tweaks
+
+ -- Kristoffer Grönlund <kristoffer.gronlund@purplescout.se>  Sat, 09 Jan 2010 04:39:10 +0100
+
 jamaendo (0.2-2) unstable; urgency=low
 
   * Initial background loading support (search window)
