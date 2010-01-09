@@ -29,10 +29,11 @@
 from distutils.core import setup
 from glob import glob
 
-def version():
+def get_version():
     from subprocess import Popen, PIPE
-    p1 = Popen("./version".split(), stdout=PIPE)
-    return p1.communicate()[0].strip()
+    p1 = Popen("grep -m 1 VERSION jamaui/ui.py".split(), stdout=PIPE)
+    p2 = Popen("cut -d ' -f 2".split(), stdin=p1.stdout, stdout=PIPE)
+    return p2.communicate()[0].strip()
 
 data_files = [
     ('/opt/jamaendo', glob('data/icon_*.png') + ['data/bg.png', 'data/album.png']),
@@ -50,7 +51,7 @@ data_files = [
 
 setup(
     name = "jamaendo",
-    version = version(),
+    version = get_version(),
     author = "Kristoffer Gronlund",
     author_email = "kristoffer.gronlund@purplescout.se",
     url = "http://jamaendo.garage.maemo.org/",
