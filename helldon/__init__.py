@@ -11,9 +11,12 @@ BUTTON_ARRANGEMENT_VERTICAL = 1
 def hildon_gtk_window_set_progress_indicator(wnd, onoff):
     pass
 
-
 def hildon_banner_show_information(wnd, icons, desc):
+    class Blah(object):
+        def set_timeout(self, t):
+            pass
     print "Banner: %s" % (desc)
+    return Blah()
 
 def transparent_expose(widget, event):
     bgimg = 'data/bg.png'

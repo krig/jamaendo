@@ -112,12 +112,15 @@ class GStreamer(_Player):
         return 'none'
 
     def get_position_duration(self):
-        try:
-            pos_int = self.player.query_position(self.time_format, None)[0]
-            dur_int = self.player.query_duration(self.time_format, None)[0]
-        except Exception, e:
-            log.exception('Error getting position')
-            pos_int = dur_int = 0
+        pos_int, dur_int = 0, 0
+        if self.player:
+            try:
+                if self.player.get_state()[1] != gst.STATE_NULL:
+                    pos_int = self.player.query_position(self.time_format, None)[0]
+                    dur_int = self.player.query_duration(self.time_format, None)[0]
+            except Exception, e:
+                log.exception('Error getting position')
+                pos_int, dur_int = 0, 0
         return pos_int, dur_int
 
     def playing(self):

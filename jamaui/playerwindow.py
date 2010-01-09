@@ -21,6 +21,7 @@
 #  Copyright (c) 2008-05-26 Thomas Perl <thpinfo.com>
 #  (based on http://pygstdocs.berlios.de/pygst-tutorial/seeking.html)
 #
+import os
 import gtk
 import gobject
 try:
@@ -28,7 +29,6 @@ try:
 except:
     import helldon as hildon
 import util
-import datetime
 import pango
 import jamaendo
 from settings import settings
@@ -38,7 +38,6 @@ import logging
 import cgi
 
 from songposition import SongPosition
-from listbox import ListDialog
 import colors
 log = logging.getLogger(__name__)
 
@@ -313,12 +312,6 @@ class PlayerWindow(hildon.StackableWindow):
              )
         self.playtime.set_markup(txt)
 
-    def set_default_cover(self):
-        tmp = util.find_resource('album.png')
-        if tmp:
-            log.debug("Setting cover to %s", tmp)
-            self.cover.set_from_file(tmp)
-
     def update_state(self):
         item = self.playlist.current()
         if item:
@@ -337,12 +330,36 @@ class PlayerWindow(hildon.StackableWindow):
             if isinstance(btn, hildon.GtkButton):
                 btn.set_sensitive(state)
 
+    def get_pixbuf(self, img):
+        try:
+            return gtk.gdk.pixbuf_new_from_file(img)
+        except gobject.GError:
+            log.error("Broken image in cache: %s", img)
+            try:
+                os.unlink(img)
+            except OSError, e:
+                log.warning("Failed to unlink broken image.")
+            if img != self.default_pixbuf:
+                return self.get_default_pixbuf()
+            else:
+                return None
+
+    def set_default_cover(self):
+        tmp = util.find_resource('album.png')
+        if tmp:
+            log.debug("Setting cover to %s", tmp)
+            pb = self.get_pixbuf(tmp)
+            if pb:
+                self.cover.set_from_pixbuf(pb)
+
     def set_album_cover(self, albumid, size, cover):
         if size == 300:
             playing = self.get_album_id()
             if playing and albumid and (int(playing) == int(albumid)):
                 log.debug("Setting cover to %s", cover)
-                self.cover.set_from_file(cover)
+                pb = self.get_pixbuf(cover)
+                if pb:
+                    self.cover.set_from_pixbuf(pb)
 
     def play_radio(self, radio_name, radio_id):
         playlist = Playlist([])
@@ -351,9 +368,6 @@ class PlayerWindow(hildon.StackableWindow):
         playlist.radio_id = radio_id
         hildon.hildon_gtk_window_set_progress_indicator(self, 1)
         self.__play_tracks(playlist)
-        #log.debug("Playlist current: %s, playing? %s",
-        #          playlist.current_index(),
-        #          self.player.playing())
 
     def play_tracks(self, tracks):
         self.__play_tracks(tracks)
