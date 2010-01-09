@@ -31,11 +31,8 @@ Maemo 5 device.
 
 ## Optification
 
-If you're running a newer release of the Fremantle platform, this step
-may not (I hope not!) be necessary, but either way: The package that
-the build process produces is not entirely optified. It is compatible
-with the `maemo-optify` tool, however. All you need to do is run
-`maemo-optify-deb` on the generated .deb file.
+The package is optified. It will install datafiles to `/opt/jamaendo`,
+and saves cached data and settings in `~/MyDocs/.jamaendo`.
 
 ## License
 
