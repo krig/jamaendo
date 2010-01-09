@@ -97,6 +97,9 @@ class FeaturedWindow(hildon.StackableWindow):
 
     def on_feature_complete(self, wnd, error=None):
         if wnd is self:
+            if error:
+                banner = hildon.hildon_banner_show_information(self, '', "Unable to get list")
+                banner.set_timeout(2000)
             self.fetcher.stop()
             self.fetcher = None
 

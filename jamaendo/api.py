@@ -587,7 +587,7 @@ class SearchQuery(GetQuery):
         self.count = count
         self.user = user
 
-    def execute(self):
+    def build_params(self):
         params = {}
         if self.query:
             params['searchquery'] = self.query
@@ -597,14 +597,16 @@ class SearchQuery(GetQuery):
             params['n'] = self.count
         if self.user:
             params['user_idstr'] = self.user
-        js = self._geturl(self.url +  urllib.urlencode(params))
+        return urllib.urlencode(params)
+
+    def execute(self):
+        js = self._geturl(self.url + self.build_params())
         if not js:
             return None
         return self.construct(js)
 
     def __str__(self):
-        params = {'searchquery':self.query, 'order':self.order, 'n':self.count}
-        return self.url +  urllib.urlencode(params)
+        return self.url + self.build_params()
 
 class JamendoAPIException(Exception):
     def __init__(self, url):
