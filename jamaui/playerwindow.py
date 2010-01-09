@@ -116,9 +116,8 @@ class PlayerWindow(hildon.StackableWindow):
         postoffice.connect('album-cover', self, self.set_album_cover)
         postoffice.connect(['next', 'prev', 'play', 'pause', 'stop'], self, self.on_state_changed)
 
-        self.on_state_changed()
-
         self.create_menu()
+        self.update_everything()
 
     def create_menu(self):
         self.menu = hildon.AppMenu()
@@ -162,7 +161,8 @@ class PlayerWindow(hildon.StackableWindow):
         self.menu.show_all()
         self.set_app_menu(self.menu)
 
-    def on_state_changed(self, *args):
+
+    def update_everything(self):
         self.update_state()
         self.update_play_button()
 
@@ -171,6 +171,8 @@ class PlayerWindow(hildon.StackableWindow):
         else:
             self.stop_position_timer()
 
+    def on_state_changed(self, *args):
+        gobject.idle_add(self.update_everything)
 
     def get_album_id(self):
         if self.player.playlist and self.player.playlist.current():
