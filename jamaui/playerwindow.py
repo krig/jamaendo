@@ -262,13 +262,15 @@ class PlayerWindow(hildon.StackableWindow):
     def on_progress_clicked(self, widget, event):
         w = widget.allocation.width
         if w > 0:
-            the_player.seek(percent=float(event.x)/float(w))
+            def seeker(percent):
+                the_player.seek(percent=percent)
+            gobject.idle_add(seeker, float(event.x)/float(w))
 
     def on_position_timeout(self):
-        if the_player.playing():
-            self.set_song_position(*the_player.get_position_duration())
-        else:
-            log.debug("position timeout, but not playing")
+        def updater(pos, dur):
+            if the_player.playing():
+                self.set_song_position(pos, dur)
+        gobject.idle_add(updater, *the_player.get_position_duration())
         return True
 
     def start_position_timer(self):

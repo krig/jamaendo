@@ -436,10 +436,6 @@ class Player(object):
             self._play_track(entry, notify='next')
         elif self.playlist.radio_mode:
             self._refill_radio()
-            #if self.playlist.has_next():
-            #    self.next()
-            #else:
-            #    self.stop()
         else:
             self.stop()
 

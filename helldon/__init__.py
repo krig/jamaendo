@@ -11,6 +11,10 @@ BUTTON_ARRANGEMENT_VERTICAL = 1
 def hildon_gtk_window_set_progress_indicator(wnd, onoff):
     pass
 
+
+def hildon_banner_show_information(wnd, icons, desc):
+    print "Banner: %s" % (desc)
+
 def transparent_expose(widget, event):
     bgimg = 'data/bg.png'
     if bgimg:
