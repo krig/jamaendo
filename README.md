@@ -12,7 +12,7 @@ Jamaendo is written by Kristoffer Grönlund.
 ## Panucci
 
 [Jamaendo][jamaendo] is based on [Panucci][panucci], an audiobook and podcast player for
-Maemo. Panucci is written by 
+Maemo.
 
  [jamendo]: http://www.jamendo.com/ "Jamendo"
  [jamaendo]: http://jamaendo.garage.maemo.org/ "Jamaendo"
