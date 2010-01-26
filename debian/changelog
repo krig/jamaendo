@@ -1,3 +1,9 @@
+jamaendo (0.2.5-2) unstable; urgency=low
+
+  * Fixed wrong license in about box.
+
+ -- Kristoffer Grönlund <kristoffer.gronlund@purplescout.se>  Tue, 26 Jan 2010 15:03:01 +0100
+
 jamaendo (0.2.5-1) unstable; urgency=low
 
   * Potential fix for deadlock in player
